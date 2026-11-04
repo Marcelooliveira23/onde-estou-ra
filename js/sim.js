@@ -116,9 +116,9 @@
       p('1/6 · Apontando para a placa da SALA'); await this.apontar('sala'); await espera(1500);
       p('2/6 · Tocando em 🛋️ (modo Decorar)'); if (!D.ativo) document.getElementById('btnDecor').click(); await espera(2500);
       D.limpar(); // recomeça a demonstração com a parede vazia
-      p('3/6 · Quadro na parede, à esquerda da placa'); D.armar('quadro'); await espera(900); D.colocar('quadro', -0.55, 0.05); await espera(1800);
-      p('4/6 · Relógio e prateleira à direita'); D.colocar('relogio', 0.42, 0.28); await espera(1200); D.colocar('prateleira', 0.5, -0.3); await espera(1800);
-      p('5/6 · Vaso com planta no chão'); D.colocar('vaso', -0.95, 0); await espera(1800);
+      p('3/6 · Quadro famoso na parede (A Noite Estrelada)'); D.armar('quadro'); await espera(900); D.colocar('quadro', -0.62, 0.02); await espera(1800);
+      p('4/6 · Relógio e moldura clássica à direita'); D.colocar('relogio', 0.42, 0.3); await espera(1200); D.colocar('moldura_vertical', 0.55, -0.25); await espera(2500);
+      p('5/6 · Poltrona e planta no chão (modelos 3D reais)'); D.colocar('poltrona', -0.75, 0); await espera(1200); D.colocar('planta', 0.95, 0); await espera(3500);
       p('6/6 · Toque em 📱 para o AR nativo do iPhone (sem placa)');
       await espera(1500);
       p('Fim ✔ · arraste os objetos com o mouse, use − + e 🎨');

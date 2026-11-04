@@ -1,33 +1,37 @@
-# 📍 Onde Estou? Localizador da Casa em Realidade Aumentada
+# 🛋️ Decora RA: Decoração em Realidade Aumentada
 
 Protótipo de **Realidade Aumentada** para a disciplina *Realidade Virtual e Aumentada* (Prof. Jadson de Araujo Almeida).
-Ele implementa **o exemplo dado pelo próprio professor** na atividade:
+**App no ar:** <https://marcelooliveira23.github.io/onde-estou-ra/> (abra no **Safari do iPhone**)
 
-> *"ao apontar para uma imagem com o celular, carrega no canto da tela um mapa informando sua localização em um prédio (similar a um jogo 3D) […] chegando na sua sala e olhando uma imagem na parede que carrega o mapa"*
+**Utilidade:** ver **móveis, plantas e quadros de verdade, em tamanho real**, dentro da própria casa **antes de comprar**:
+se o sofá cabe, se a planta combina, em que altura fica o quadro. Evita compras erradas e devoluções.
 
-## O que o app faz
+## Os 3 modos
 
-| Pedido do professor | No app |
-|---|---|
-| "apontar para uma imagem com o celular" | Placa colada na parede do cômodo, reconhecida pela câmera (MindAR, rastreamento de imagem) |
-| "carrega no canto da tela um mapa" | **Minimapa no canto superior direito**, que abre quando a placa é reconhecida |
-| "informando sua localização" | Boneco do jogador / ponto **"VOCÊ ESTÁ AQUI"** + painel "Você está na Sala" |
-| "similar a um jogo 3D" | Minimapa **3D em terceira pessoa**, como em game (boneco com cone de visão), e **maquete 3D da casa** sobre a placa. O botão 2D/3D troca para a planta |
-| "simular com um mapa da sua casa" | Planta da casa configurável em `config.js` |
+| Modo | Como funciona | Precisa de placa? |
+|---|---|---|
+| **🪄 Decorar o ambiente** (`livre.html`) | **SLAM visual** no navegador (AlvaAR/WebAssembly): reconhece o **chão** e as **paredes** pela câmera. Toque no lugar e o objeto aparece ali, em tamanho real. Arraste, gire, aumente/diminua, troque a obra do quadro | **Não** |
+| **📍 Com placa na parede** (`index.html`) | **Rastreamento de imagem** (MindAR): a placa vira a âncora. Localizador da casa (mapa 3D no canto, rota até o cômodo, como no exemplo do professor) + **decoração presa à parede**, salva no celular | Sim |
+| **📱 AR nativo do iPhone** | **AR Quick Look** do iOS (ARKit) com arquivos `.usdz` gerados dos mesmos modelos | Não |
 
-**Extras que aumentam a utilidade:**
-- **Rota até o cômodo escolhido**, com trilha animada e seta 3D, mais a instrução calculada: "vá para a sua direita", "vire-se: o caminho é atrás de você" e a distância.
-- **Chegada detectada:** ao apontar para a placa do destino, aparece "✅ Você chegou à Cozinha! Percurso concluído em 12 s".
-- **🚨 Rota de emergência:** um toque leva até a porta da rua (rota de fuga em vermelho).
-- **🔊 Voz** que lê a instrução (acessibilidade).
-- **Lembra a última posição** quando a placa sai da câmera.
-- **App instalável:** "Adicionar à Tela de Início" no iPhone abre como app, em tela cheia, e funciona offline depois da 1ª visita.
-- **QR code** nas folhas impressas: a câmera comum do iPhone abre o app direto.
-- **🛋️ Modo Decorar:** com a placa na câmera, escolha **Quadro, Relógio, Prateleira, Vaso** ou **📌 Marcar** e toque na parede. O objeto aparece **em tamanho real**, preso à parede. Dá para arrastar, aumentar e diminuir (botões ou pinça), trocar o modelo e remover. Tudo fica salvo e reaparece quando você volta à placa.
-- **📱 AR nativo do iPhone (AR Quick Look):** abre os mesmos objetos na RA do próprio iOS, que encontra **chão e paredes sozinha, sem placa**. Assim dá para pôr o vaso em qualquer canto.
-- **Simulador** para ver e ensaiar no PC sem câmera (`simulador.html`).
+## Catálogo (objetos reais)
 
-**Utilidade:** o GPS mostra **em que endereço** você está, mas não **em qual sala, corredor ou andar** de um prédio. A placa na parede resolve isso com precisão de cômodo. Isso serve para hospitais, escolas, shoppings, museus e para a evacuação em emergências.
+- **17 itens**: sofá, poltronas, puff, mesas, estante, cômoda, plantas, vaso de cerâmica, busto de mármore, estátua, molduras, quadro e relógio.
+- **Móveis e objetos:** modelos **escaneados por fotogrametria** de objetos reais (**Poly Haven**, licença **CC0**), com texturas PBR (couro, madeira, mármore).
+- **Quadros:** fotos de **obras de arte reais em domínio público** (Wikimedia Commons): *A Noite Estrelada*, *A Grande Onda de Kanagawa*, *Impressão, Nascer do Sol*, *O Quarto em Arles*, *O Beijo*, *Moça com Brinco de Pérola*, *Nenúfares* e *Os Girassóis*. O botão 🎨 troca a obra.
+- **Iluminação realista:** mapa de ambiente (reflexos) + **sombra de contato** sob os móveis.
+
+## Como usar no iPhone (modo sem placa)
+
+1. Abra o link no **Safari** → **🪄 Decorar o ambiente** → **📷 Começar** → permita **câmera** e **movimento**.
+2. Aponte para o **chão** e mova o celular **devagar para os lados** (pontinhos verdes = o app está mapeando).
+3. Apareceu **"✅ Chão encontrado!"** → escolha um item no catálogo → **toque no chão** onde ele deve ficar.
+4. Toque no objeto para **arrastar**, **↻ girar**, **− / +** (ou pinça) e **🎨 arte** (nos quadros).
+5. Para a **parede**: toque em **＋ superfície** e aponte para a parede, mexendo devagar. Depois escolha um quadro e toque na parede.
+6. Se o app confundir chão com parede: **↕️ É chão / é parede**. Se perder o lugar: volte devagar ou toque em 🔄.
+
+> **Sobre a escala:** sem placa, a câmera sozinha não sabe medidas absolutas. O app supõe o celular a ~1,3 m do chão (pessoa em pé).
+> Se o objeto parecer grande ou pequeno demais, ajuste com − / +. No modo **com placa** a escala é exata (a placa tem 17 cm).
 
 ## Por que não Unity?
 
@@ -129,10 +133,13 @@ No mesmo endereço, `http://localhost:8080/index.html` usa a **webcam** do PC de
 | Minimapa 3D estilo game | `js/minimapa3d.js` | segunda cena three.js, câmera em 3ª pessoa |
 | Planta, rotas e direção | `js/casa.js` | busca em largura pelas portas; **produto escalar** com os vetores "direita" e "frente" de quem olha a placa |
 | Interface, voz, chegada | `js/app.js` | HTML/SVG, `speechSynthesis` |
-| Modo Decorar | `js/decor.js`, `js/moveis.js` | o toque vira um **raio** (Raycaster) que cruza o **plano da parede** definido pela placa; objetos 3D feitos em código, em metros |
+| Decorar sem placa | `livre.html`, `js/livre.js` | **SLAM** (AlvaAR): pose da câmera a cada quadro + ajuste de plano; o toque vira um raio que cruza o plano |
+| Modo Decorar (placa) | `js/decor.js`, `js/moveis.js` | o toque vira um **raio** (Raycaster) que cruza o **plano da parede** definido pela placa; objetos 3D feitos em código, em metros |
 | AR nativo do iPhone | `modelos/*.usdz` | **AR Quick Look** do iOS (ARKit detecta chão e paredes), arquivos USDZ gerados dos mesmos modelos |
 | App instalável/offline | `manifest.webmanifest`, `sw.js` | PWA |
 
-## Créditos
-Bibliotecas de código aberto (licença MIT): **MindAR**, **A-Frame**, **three.js** e **qrcode-generator**.
-A maquete, as placas, os mapas e a lógica de rota foram feitos para este projeto, sem modelos 3D de terceiros.
+## Créditos e licenças
+- **Modelos 3D:** [Poly Haven](https://polyhaven.com) (CC0, domínio público).
+- **Obras de arte:** fotos em domínio público do [Wikimedia Commons](https://commons.wikimedia.org).
+- **Bibliotecas:** MindAR, A-Frame, three.js e qrcode-generator (MIT); **AlvaAR** (SLAM, **GPL-3.0**; veja `lib/LICENSE-AlvaAR-GPL3.txt`).
+- Feito para este projeto: a interface, o modo decorar (posicionamento por raio, planos, escala), o localizador (maquete, minimapa, rotas), as placas, o quadro e o relógio 3D.

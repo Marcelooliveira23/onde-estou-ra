@@ -14,12 +14,12 @@
   const { C, porId } = window.Casa;
   const LARG = C.larguraPlaca || 0.17;  // largura impressa da placa, em metros
   const ALT = C.alturaPlaca || 1.5;     // altura do centro da placa até o chão, em metros
-  const CHAVE = 'onde-estou-decor-v1';
+  const CHAVE = 'onde-estou-decor-v2';
   const cena = document.getElementById('cena');
   const $ = id => document.getElementById(id);
 
   const TIPOS = Object.assign({}, window.Moveis.TIPOS, {
-    marcador: { nome: 'Marcar', emoji: '📌', local: 'parede', variantes: 1 },
+    marcador: { nome: 'Marcador', local: 'parede', variantes: 1 },
   });
 
   let ativo = false, comodo = null, armado = null, sel = null, arrasto = null, pinca = null, helper = null;
@@ -28,6 +28,7 @@
 
   let dados = {};
   try { dados = JSON.parse(localStorage.getItem(CHAVE)) || {}; } catch (e) { dados = {}; }
+  for (const k in dados) dados[k] = (dados[k] || []).filter(d => TIPOS[d.tipo]); // ignora itens que saíram do catálogo
   const salvar = () => { try { localStorage.setItem(CHAVE, JSON.stringify(dados)); } catch (e) { /* modo privado */ } };
 
   // ---------- cena ----------
@@ -37,8 +38,10 @@
     const g = new THREE.Group();
     g.scale.setScalar(1 / LARG); // dentro do grupo, 1 unidade = 1 metro
     g.visible = false;
-    g.add(new THREE.HemisphereLight('#ffffff', '#8a7f70', 1.8));
-    const sol = new THREE.DirectionalLight('#ffffff', 1.5);
+    // luz de ambiente para os materiais PBR dos modelos reais (couro, madeira, mármore)
+    if (!cena.object3D.environment) cena.object3D.environment = window.Moveis.ambiente(cena.renderer);
+    g.add(new THREE.HemisphereLight('#ffffff', '#8a7f70', 0.6));
+    const sol = new THREE.DirectionalLight('#ffffff', 0.9);
     sol.position.set(0.6, 1.2, 1.5); g.add(sol, sol.target);
     const itens = new THREE.Group(); g.add(itens);
     g.userData.itens = itens;
@@ -72,6 +75,7 @@
     const d = w.userData.d;
     if (noChao(d)) w.position.set(d.x, -ALT, d.z != null ? d.z : 0.35);
     else w.position.set(d.x, d.y, 0.004);
+    w.rotation.y = d.rot || 0;
     w.scale.setScalar(d.esc || 1);
   }
 
@@ -114,7 +118,7 @@
     }
     const d = { tipo, x: +p.x.toFixed(3), y: +p.y.toFixed(3), esc: 1, v: 0 };
     if (texto) d.texto = texto;
-    if (TIPOS[tipo].local === 'chao') { d.y = 0; d.z = 0.35; }
+    if (TIPOS[tipo].local === 'chao') { d.y = 0; d.z = +Math.max(0.3, (TIPOS[tipo].dim ? TIPOS[tipo].dim[2] / 2 : 0) + 0.08).toFixed(2); } // encostado na parede
     (dados[comodo] = dados[comodo] || []).push(d);
     const w = construir(d);
     grupos[comodo].userData.itens.add(w);
@@ -188,7 +192,7 @@
     requestAnimationFrame(loop);
     if (!ativo || !grupos[comodo]) return;
     const agora = new Date();
-    grupos[comodo].userData.itens.children.forEach(w => { const f = w.children[0].userData.atualizar; if (f) f(agora); });
+    grupos[comodo].userData.itens.children.forEach(w => { const f = w.children[0] && w.children[0].userData.atualizar; if (f) f(agora); });
     if (sel && helper) { helper.setFromObject(sel); helper.visible = placaVisivel(); }
   })();
 
@@ -200,31 +204,35 @@
     $('decorTitulo').textContent = '🛋️ Decorar · ' + c.nome;
     const n = (dados[comodo] || []).length;
     $('decorConta').textContent = n ? `${n} ${n > 1 ? 'itens' : 'item'} nesta parede` : '';
-    document.querySelectorAll('#catalogo .chip').forEach(b => b.classList.toggle('ativo', b.dataset.tipo === armado));
+    if (catalogo) catalogo.marcar(armado);
+    $('btnMarcar').classList.toggle('ativo', armado === 'marcador');
     $('decorEdicao').hidden = !sel;
     if (sel) {
-      const t = TIPOS[sel.userData.d.tipo];
+      const t = TIPOS[sel.userData.d.tipo], leg = sel.children[0] && sel.children[0].userData.legenda;
       $('btnVariar').hidden = t.variantes < 2;
-      dica(`<b>${t.emoji} ${t.nome}</b> selecionado · arraste para mover${t.local === 'chao' ? ' pelo chão' : ''} · pinça ou − + para o tamanho`);
+      $('btnVariar').textContent = t.proc === 'relogio' ? '🎨 cor' : '🎨 arte';
+      $('btnGirar').hidden = t.local !== 'chao';
+      dica(`<b>${t.nome}</b>${leg ? ` · <i>${leg}</i>` : ''}<br><small>Arraste para mover${t.local === 'chao' ? ' pelo chão' : ''} · pinça ou − + para o tamanho</small>`);
     } else if (armado) {
       const t = TIPOS[armado];
       dica(t.local === 'chao'
-        ? `👆 Toque na parede <b>acima</b> do lugar: o ${t.nome.replace(' (chão)', '').toLowerCase()} vai para o chão logo abaixo`
-        : `👆 Toque na parede onde quer ${armado === 'marcador' ? 'marcar' : 'colocar o ' + t.nome.toLowerCase()}`);
+        ? `👆 Toque na parede <b>acima</b> do lugar: <b>${t.nome}</b> vai para o chão logo abaixo`
+        : `👆 Toque na parede onde quer ${armado === 'marcador' ? 'marcar' : 'colocar: <b>' + t.nome + '</b>'}`);
     } else {
       dica('Escolha um item e toque na parede para colocar. Toque num objeto para mover.<br><small>Os objetos têm <b>tamanho real</b>: afaste-se 1 a 2 m da parede para vê-los inteiros, sem perder a placa de vista.</small>');
     }
   }
 
+  let catalogo = null;
   function montarCatalogo() {
-    const box = $('catalogo');
-    for (const [id, t] of Object.entries(TIPOS)) {
-      const b = document.createElement('button');
-      b.className = 'chip'; b.dataset.tipo = id; b.style.setProperty('--cor', '#0f172a');
-      b.textContent = `${t.emoji} ${t.nome}`;
-      b.onclick = () => { armado = armado === id ? null : id; selecionar(null); };
-      box.appendChild(b);
-    }
+    const escolher = id => {
+      armado = armado === id ? null : id;
+      if (armado && TIPOS[id].gltf) window.Moveis.carregarGltf(TIPOS[id].gltf); // já começa a baixar
+      selecionar(null);
+    };
+    catalogo = window.Moveis.montarCatalogo($('catalogo'), escolher);
+    $('btnMarcar').onclick = () => escolher('marcador');
+    $('btnGirar').onclick = () => { if (sel) { sel.userData.d.rot = ((sel.userData.d.rot || 0) + Math.PI / 4) % (Math.PI * 2); posicionar(sel); salvar(); } };
     $('btnMenor').onclick = () => { if (sel) { sel.userData.d.esc = Math.max(0.3, (sel.userData.d.esc || 1) / 1.15); posicionar(sel); salvar(); } };
     $('btnMaior').onclick = () => { if (sel) { sel.userData.d.esc = Math.min(3, (sel.userData.d.esc || 1) * 1.15); posicionar(sel); salvar(); } };
     $('btnVariar').onclick = () => {

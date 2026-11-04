@@ -1,64 +1,49 @@
-# 🎬 Roteiro do vídeo (3 a 4 minutos e meio, sem música)
+# 🎬 Roteiro do vídeo (3 a 4 minutos, sem música)
 
 Grave com a **Gravação de Tela do iPhone com o microfone ligado** e fale com as **suas palavras**. Os textos abaixo são só um guia.
 Peso na nota: **projeto funcionando 40%**, **utilidade 30%**, **explicação 30%**.
-
-Dica: abra o app pelo **ícone na Tela de Início** (Adicionar à Tela de Início), assim fica em tela cheia.
+Dica: abra o app pelo **ícone na Tela de Início** (fica em tela cheia) e grave numa sala **bem iluminada**.
 
 ---
 
-### 1. Apresentação (0:00–0:20): tela inicial do app
-> "Olá, meu nome é ______. Este é o meu protótipo de Realidade Aumentada para a disciplina de Realidade Virtual e Aumentada. Ele se chama **Onde Estou?**: um **localizador dentro de um prédio**, a ideia sugerida na atividade, simulado aqui na minha casa."
+### 1. Apresentação (0:00–0:20): tela inicial
+> "Olá, meu nome é ______. Este é o meu protótipo de Realidade Aumentada: o **Decora RA**, um app para **decorar a casa** com móveis e quadros virtuais em **tamanho real**."
 
 ### 2. Utilidade (0:20–0:50)
-> "O GPS do celular mostra em que endereço eu estou, mas **não diz em qual sala ou em qual andar** de um prédio. Em hospitais, escolas e shoppings as pessoas se perdem. A solução: uma **placa com uma imagem** na parede de cada ambiente. Aponto o celular, o app **reconhece a imagem**, **carrega no canto da tela um mapa com a minha localização** e mostra o caminho até onde eu quero ir."
+> "Quem vai comprar um sofá ou um quadro sempre fica na dúvida: será que cabe? Será que combina? Com o app eu **vejo o objeto dentro da minha sala antes de comprar**. Os móveis são **modelos 3D escaneados de objetos reais**, e os quadros são **obras famosas** em domínio público."
 
-### 3. RA funcionando na SALA (0:50–1:50): parte principal
-Toque em **Iniciar câmera** e aponte para a placa da **SALA**.
-> "Aponto a câmera para a placa da sala. O app reconheceu a imagem e apareceu em cima dela uma **maquete 3D da casa**, com o pino **'você está aqui'**. E no **canto da tela** carregou o **mapa 3D, como num jogo**: esse bonequinho sou eu, e o cone amarelo mostra para onde estou olhando."
+### 3. RA sem placa: reconhecendo o ambiente (0:50–1:50), parte principal
+Toque em **🪄 Decorar o ambiente** → **Começar**. Aponte para o chão e mexa devagar.
+> "O app não precisa de placa nem de QR code: ele usa **SLAM**, que reconhece o ambiente pela câmera. Esses pontinhos verdes são pontos do chão que ele está acompanhando… pronto: **chão encontrado**."
 
-Toque em **2D** e depois em **3D** no mapa:
-> "Também dá para ver a planta em 2D."
+Escolha **Poltrona** e toque no chão. Ande em volta.
+> "Escolho uma poltrona e toco no chão: ela fica **parada no lugar**, mesmo quando eu ando em volta. Posso **arrastar**, **girar** e mudar o tamanho."
 
-Toque em **Cozinha**:
-> "Escolho ir para a cozinha. Aparecem a **trilha verde** e a **seta 3D**, e a instrução: **vá para a sua direita, uns 5 metros**. A maquete está **girada igual à casa real**: a cozinha aparece à direita porque está mesmo à minha direita."
+Coloque uma **Planta grande** e a **Mesa lateral**.
 
-Toque em **Banheiro**:
-> "Para o banheiro, a rota é recalculada passando pela cozinha: uns 8 metros."
+### 4. Quadro na parede (1:50–2:30)
+Toque em **＋ superfície**, aponte para a parede e mexa devagar. Escolha **Parede → Quadro famoso** e toque na parede. Toque em **🎨 arte**.
+> "Agora a parede: o app encontrou a parede, e eu penduro um quadro. No 🎨 eu troco a obra: Van Gogh, Hokusai, Monet…"
 
-Toque em 🔊 (voz) e depois afaste a câmera da placa:
-> "Tem voz, para acessibilidade. E se eu tiro a câmera da placa, o app **lembra a última posição**."
+### 5. Outros modos (2:30–2:55), opcional
+> "Também tem o modo **com placa**, em que uma imagem na parede serve de âncora e deixa a escala exata, com um localizador da casa. E o botão **AR do iPhone** abre os mesmos objetos na RA nativa do iOS."
 
-### 4. Andar até a COZINHA (1:50–2:30)
-Com destino **Cozinha**, ande até lá e aponte para a placa **COZINHA**.
-> "Seguindo a seta, cheguei na cozinha. Apontei para a placa e o app confirmou: **'Você chegou à Cozinha'**, com o tempo do percurso. O mapa agora mostra que estou na cozinha."
-
-Toque em **🚨 Saída**:
-> "Numa emergência, um toque mostra a **rota de fuga** até a porta de saída, em vermelho."
-
-### 4b. Bônus: decorar a parede (2:30–2:55), opcional
-Volte para a placa da **SALA**, toque em **🛋️**, depois em **Quadro** e **toque na parede**. Afaste-se um pouco.
-> "O app também simula **decoração**: escolho um quadro e toco na parede, e ele aparece em **tamanho real**, preso à parede. Arrasto para mudar o lugar e posso pôr um **vaso no chão**. Para pôr em qualquer canto, sem placa, o botão **AR do iPhone** usa a RA nativa do iOS."
-
-*(Se o vídeo ficar longo, corte esta parte. O foco da nota é o **localizador**.)*
-
-### 5. Como foi feito (2:55–3:45)
-> "O professor permitiu Unity ou outro software. Como eu queria rodar no iPhone e o Unity exige um Mac para gerar o app de iOS, fiz em **WebAR**: o app roda direto no **Safari**, hospedado no **GitHub Pages**. Usei:
-> - **MindAR**, para reconhecer as imagens das placas. Ele procura pontos característicos da imagem em cada quadro da câmera;
-> - **A-Frame e three.js**, para a maquete 3D, o minimapa 3D, a seta e a trilha animada;
-> - um arquivo com a **planta da casa**: cômodos, portas e a parede onde está cada placa.
+### 6. Como foi feito (2:55–3:40)
+> "O professor permitiu Unity ou outro software. Como eu queria rodar no iPhone, e o Unity exige um Mac para gerar o app de iOS, fiz em **WebAR**: o app roda direto no **Safari**, hospedado no **GitHub Pages**. Usei:
+> - **AlvaAR**, uma biblioteca de **SLAM** em WebAssembly: a cada quadro da câmera ela calcula a **posição do celular** e encontra **planos** como o chão e a parede;
+> - **three.js**, para desenhar os modelos 3D com **iluminação realista**;
+> - modelos **escaneados por fotogrametria** (Poly Haven) e obras de arte em **domínio público**.
 >
-> Na decoração, o toque na tela vira um **raio** que sai da câmera, e o ponto onde ele cruza o **plano da parede** (definido pela placa) é onde o objeto fica.
-> A rota é uma **busca pelas portas** entre os cômodos. Para dizer 'direita', 'esquerda' ou 'atrás', faço um **produto escalar** entre a direção do caminho e os vetores 'direita' e 'frente' de quem está olhando a placa."
+> Para colocar o objeto, o toque na tela vira um **raio** que sai da câmera, e o ponto onde ele cruza o plano do chão ou da parede é onde o objeto fica."
 
-### 6. Encerramento (3:45–4:00)
-> "Num prédio real, bastaria cadastrar a planta e imprimir uma placa por ambiente. Obrigado!"
+### 7. Encerramento (3:40–4:00)
+> "Com isso dá para planejar a decoração inteira antes de gastar. Obrigado!"
 
 ---
 
 ### ✅ Checklist antes de enviar
 - [ ] Gravado **na tela do iPhone**, com o app rodando de verdade (não o simulador)
 - [ ] **Sua voz** explicando, **sem música**
-- [ ] Mostrou: reconhecer a placa → **mapa no canto** → maquete 3D → troca de destino → andar até a outra placa → "você chegou"
+- [ ] Mostrou: reconhecer o chão → colocar móvel → andar em volta → parede → quadro → trocar a obra
 - [ ] Explicou a **utilidade** e **como foi feito**
 - [ ] YouTube **Não listado** → link no **AVA Univirtus**

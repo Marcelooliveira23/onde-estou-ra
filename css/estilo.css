@@ -143,3 +143,22 @@ body.decorando #btnDecor { background: #16a34a; }
 .ql-item span { padding: 6px 8px; font-size: 14px; }
 .ql-item small { display: block; color: #64748b; font-size: 12px; }
 #btnReativar { position: fixed; left: 50%; top: 45%; transform: translate(-50%, -50%); width: min(80vw, 340px); z-index: 70; }
+
+/* ---------- catálogo visual (fotos dos itens) ---------- */
+.catalogo-visual { margin: 8px -14px 8px; }
+.cat-abas, .cat-grade { display: flex; gap: 6px; overflow-x: auto; padding: 0 14px; scrollbar-width: none; }
+.cat-abas::-webkit-scrollbar, .cat-grade::-webkit-scrollbar { display: none; }
+.cat-abas button { flex: none; font: inherit; font-size: 13px; font-weight: 800; padding: 6px 12px; border-radius: 999px; border: 0; background: #e2e8f0; color: #334155; }
+.cat-abas button.ativo { background: #0f172a; color: #fff; }
+.cat-grade { margin-top: 8px; padding-bottom: 2px; }
+.cat-item { flex: none; width: 86px; padding: 0; border: 2px solid transparent; border-radius: 14px; background: #fff; overflow: hidden; font: inherit; text-align: center; box-shadow: 0 1px 4px rgba(0, 0, 0, .12); }
+.cat-item img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #f1ede6; }
+.cat-item span { display: block; font-size: 11px; font-weight: 700; padding: 4px 3px 5px; line-height: 1.15; color: #0f172a; }
+.cat-item.ativo { border-color: #16a34a; box-shadow: 0 0 0 3px rgba(22, 163, 74, .3); }
+.ql-lista { max-height: 52vh; overflow-y: auto; }
+
+/* capa do Decora RA */
+.btn-grande small { display: block; font-size: 13px; font-weight: 600; opacity: .75; margin-top: 2px; }
+a.btn-grande.btn-link { display: block; text-decoration: none; text-align: center; box-sizing: border-box; }
+.btn-grande.btn-sec { background: #1e293b; color: #fff; box-shadow: none; border: 2px solid #475569; margin-top: 10px; font-size: 18px; padding: 14px; }
+button.link.ativo { color: #16a34a; text-decoration: underline; }

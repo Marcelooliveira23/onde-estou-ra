@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f172a">
+<title>Decora RA</title>
+<link rel="stylesheet" href="css/estilo.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icones/icone-180.png">
+<link rel="icon" href="icones/icone-192.png">
+<style>
+  #video, #gl, #pontos { position: fixed; inset: 0; width: 100%; height: 100%; }
+  #video { object-fit: cover; z-index: 0; background: #000; }
+  #gl { z-index: 1; touch-action: none; }
+  #pontos { z-index: 2; pointer-events: none; }
+  #passos { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); width: min(86vw, 360px);
+    background: rgba(15, 23, 42, .82); color: #fff; border-radius: 18px; padding: 16px 18px; text-align: center; line-height: 1.45; font-weight: 600; }
+  #passos .grande { font-size: 40px; display: block; animation: balanca 1.6s ease-in-out infinite; }
+  @keyframes balanca { 0%, 100% { transform: translateX(-18px); } 50% { transform: translateX(18px); } }
+  #barra { position: absolute; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); background: var(--vidro);
+    border-radius: 18px; padding: 12px 14px; box-shadow: 0 -4px 24px rgba(0, 0, 0, .3); max-width: 560px; margin: 0 auto; pointer-events: auto; }
+  .exp { font-size: 11px; font-weight: 800; color: #7c3aed; background: #ede9fe; padding: 2px 8px; border-radius: 99px; }
+</style>
+</head>
+<body>
+
+<section id="capa">
+  <div class="capa-conteudo">
+    <div class="logo">🛋️</div>
+    <h1>Decora RA</h1>
+    <p class="sub">Decore sua casa em Realidade Aumentada <span class="exp">SEM PLACA</span></p>
+    <p class="desc">Sem imprimir nada: o app usa <b>SLAM</b> (localização e mapeamento visual) para reconhecer o <b>chão</b> e as <b>paredes</b>
+      pela câmera. Escolha móveis, plantas e quadros <b>reais, em tamanho real</b>, e veja como ficam no seu ambiente antes de comprar.</p>
+    <button id="btnComecar" class="btn-grande">📷 Começar</button>
+    <p id="avisoHttps" class="aviso" hidden>⚠️ A câmera só funciona em endereço <b>https://</b>.</p>
+    <div class="links"><a href="index.html">← Voltar ao localizador</a> &nbsp;·&nbsp; <a href="#" id="linkQL">📱 AR nativo do iPhone</a></div>
+  </div>
+</section>
+
+<div id="carregando" hidden><div class="spinner"></div><p>Abrindo a câmera e o reconhecimento do ambiente…</p></div>
+
+<video id="video" playsinline muted autoplay></video>
+<canvas id="gl"></canvas>
+<canvas id="pontos"></canvas>
+
+<div id="hud" hidden>
+  <div id="topo">
+    <div id="status" class="procurando"><span class="pulso"></span><span id="statusTxt">Reconhecendo o ambiente…</span></div>
+    <button id="btnReset" class="btn-icone" title="Recomeçar">🔄</button>
+  </div>
+
+  <div id="passos"><span class="grande">📱</span><span id="passosTxt">Aponte para o <b>chão</b> e mova o celular <b>devagar para os lados</b>, como se estivesse escaneando.</span></div>
+  <div id="aviso" hidden></div>
+
+  <div id="barra" hidden>
+    <div class="decor-cabeca"><b>🪄 Decorar</b><span id="conta" class="decor-conta"></span>
+      <button id="btnSuperficie" class="mini-btn" title="Procurar outra superfície">＋ superfície</button></div>
+    <div id="catalogo"></div>
+    <div id="edicao" class="decor-edicao" hidden>
+      <button id="btnGirar">↻ girar</button><button id="btnMenor">−</button><button id="btnMaior">+</button><button id="btnVariar">🎨 arte</button><button id="btnRemover">🗑️</button>
+    </div>
+    <div id="dica" class="instrucao"></div>
+    <div class="decor-rodape"><button id="btnTipo" class="link">↕️ É chão / é parede</button><a class="link" href="index.html" style="font-size:13px;font-weight:700;color:#1d4ed8;text-decoration:none;padding:4px 0">📍 Localizador (com placa)</a></div>
+  </div>
+</div>
+
+<div id="ql" hidden>
+  <div class="ql-caixa">
+    <div class="decor-cabeca"><b>📱 AR nativo do iPhone</b><button id="btnQLFechar" class="mini-btn">✕</button></div>
+    <p class="ql-txt">A RA do próprio iOS (AR Quick Look) também encontra o chão e as paredes sozinha. Um objeto por vez.</p>
+    <div id="qlLista" class="ql-lista"></div>
+    <p id="qlAviso" class="aviso" hidden>Abre no <b>Safari do iPhone/iPad</b>.</p>
+  </div>
+</div>
+
+<script type="importmap">{ "imports": { "three": "./lib/three.module.min.js" } }</script>
+<script type="module" src="js/livre.js"></script>
+</body>
+</html>

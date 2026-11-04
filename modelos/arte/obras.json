@@ -1,0 +1,74 @@
+[
+ {
+  "id": "noite_estrelada",
+  "titulo": "A Noite Estrelada",
+  "autor": "Vincent van Gogh, 1889",
+  "w": 44567,
+  "h": 35291,
+  "fonte": "https://commons.wikimedia.org/wiki/File:Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg",
+  "licenca": "Public domain"
+ },
+ {
+  "id": "grande_onda",
+  "titulo": "A Grande Onda de Kanagawa",
+  "autor": "Katsushika Hokusai, c. 1831",
+  "w": 3859,
+  "h": 2594,
+  "fonte": "https://commons.wikimedia.org/wiki/File:Tsunami_by_hokusai_19th_century.jpg",
+  "licenca": "Public domain"
+ },
+ {
+  "id": "impressao",
+  "titulo": "Impressão, Nascer do Sol",
+  "autor": "Claude Monet, 1872",
+  "w": 5773,
+  "h": 4478,
+  "fonte": "https://commons.wikimedia.org/wiki/File:Monet_-_Impression,_Sunrise.jpg",
+  "licenca": "Public domain"
+ },
+ {
+  "id": "o_quarto",
+  "titulo": "O Quarto em Arles",
+  "autor": "Vincent van Gogh, 1888",
+  "w": 30000,
+  "h": 23803,
+  "fonte": "https://commons.wikimedia.org/wiki/File:Vincent_van_Gogh_-_De_slaapkamer_-_Google_Art_Project.jpg",
+  "licenca": "Public domain"
+ },
+ {
+  "id": "o_beijo",
+  "titulo": "O Beijo",
+  "autor": "Gustav Klimt, 1908",
+  "w": 7376,
+  "h": 7401,
+  "fonte": "https://commons.wikimedia.org/wiki/File:The_Kiss_-_Gustav_Klimt_-_Google_Cultural_Institute.jpg",
+  "licenca": "Public domain"
+ },
+ {
+  "id": "perola",
+  "titulo": "Moça com Brinco de Pérola",
+  "autor": "Johannes Vermeer, c. 1665",
+  "w": 12285,
+  "h": 14550,
+  "fonte": "https://commons.wikimedia.org/wiki/File:1665_Girl_with_a_Pearl_Earring.jpg",
+  "licenca": "Public domain"
+ },
+ {
+  "id": "nenufares",
+  "titulo": "Nenúfares",
+  "autor": "Claude Monet, 1906",
+  "w": 2342,
+  "h": 2250,
+  "fonte": "https://commons.wikimedia.org/wiki/File:Claude_Monet_-_Water_Lilies_-_1906,_Ryerson.jpg",
+  "licenca": "Public domain"
+ },
+ {
+  "id": "girassois",
+  "titulo": "Os Girassóis",
+  "autor": "Vincent van Gogh, 1888",
+  "w": 3349,
+  "h": 4226,
+  "fonte": "https://commons.wikimedia.org/wiki/File:Vincent_Willem_van_Gogh_127.jpg",
+  "licenca": "Public domain"
+ }
+]

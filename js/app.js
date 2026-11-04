@@ -171,9 +171,8 @@
 
   // ---------- AR nativo do iPhone (AR Quick Look, arquivos .usdz) ----------
   const temQuickLook = (() => { try { return document.createElement('a').relList.supports('ar'); } catch (e) { return false; } })();
-  const MODELOS = [['quadro', 'Quadro', 'parede'], ['relogio', 'Relógio', 'parede'], ['prateleira', 'Prateleira', 'parede'], ['vaso', 'Vaso com planta', 'chão']];
-  $('qlLista').innerHTML = MODELOS.map(([id, nome, onde]) =>
-    `<a class="ql-item" rel="ar" href="modelos/${id}.usdz#allowsContentScaling=0"><img src="modelos/${id}.jpg" alt="${nome}"><span><b>${nome}</b><small>na ${onde}</small></span></a>`).join('');
+  $('qlLista').innerHTML = Object.values(window.Moveis.TIPOS).map(t =>
+    `<a class="ql-item" rel="ar" href="modelos/usdz/${t.id}.usdz#allowsContentScaling=0"><img src="${t.foto}" alt="" loading="lazy"><span><b>${t.nome}</b><small>${t.local === 'parede' ? 'na parede' : 'no chão'}</small></span></a>`).join('');
   $('qlAviso').hidden = temQuickLook;
   document.querySelectorAll('.ql-item').forEach(a => a.addEventListener('click', e => {
     if (!temQuickLook) { e.preventDefault(); return; }
