@@ -8,6 +8,9 @@
  *   3. o toque na tela vira um raio (Raycaster) que cruza esse plano: ali entra o objeto.
  * O giroscópio (orientação do celular) diz onde é "para cima", para saber se o
  * plano é chão ou parede e deixar os objetos em pé.
+ * MODO RÁPIDO (rede de segurança): se o SLAM não achar o chão (pouca luz, chão liso)
+ * ou não carregar, a câmera virtual passa a seguir só o GIROSCÓPIO (3 graus de liberdade):
+ * o chão fica a 1,3 m abaixo do celular e os objetos ficam fixos enquanto você gira.
  * Teste no PC: livre.html?video=caminho.mp4 usa um vídeo no lugar da câmera.
  */
 import * as THREE from 'three';
@@ -26,7 +29,7 @@ const ALTURA_CELULAR = 1.3;     // metros do chão até o celular (pessoa em pé
 const DIST_PAREDE = 1.5;        // metros até a parede, se a 1ª superfície for parede
 
 const TIPOS = Moveis.TIPOS;
-const estado = { rastreando: false, quadrosOk: 0, procurar: true, armado: null, sel: null, cima: null, k: null };
+const estado = { modo: 'slam', rastreando: false, quadrosOk: 0, procurar: true, armado: null, sel: null, cima: null, k: null, inicio: 0 };
 const planos = [], itens = [];
 
 if (!window.isSecureContext && !VIDEO_TESTE) $('avisoHttps').hidden = false;
@@ -34,7 +37,15 @@ if (!window.isSecureContext && !VIDEO_TESTE) $('avisoHttps').hidden = false;
 // ---------- giroscópio: direção "para cima" no referencial do celular ----------
 let orient = null;
 function ouvirOrientacao() {
-  window.addEventListener('deviceorientation', e => { if (e.beta != null) orient = { b: e.beta, g: e.gamma }; });
+  window.addEventListener('deviceorientation', e => { if (e.beta != null) orient = { a: e.alpha || 0, b: e.beta, g: e.gamma }; });
+}
+// orientação do celular → rotação da câmera (mesma conta do DeviceOrientationControls do three.js)
+const eulerGiro = new THREE.Euler(), qTela = new THREE.Quaternion(), qAjuste = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));
+function cameraPeloGiroscopio() {
+  if (!orient) return;
+  const r = THREE.MathUtils.degToRad, tela = r((screen.orientation && screen.orientation.angle) || 0);
+  eulerGiro.set(r(orient.b), r(orient.a), -r(orient.g), 'YXZ');
+  camera.quaternion.setFromEuler(eulerGiro).multiply(qAjuste).multiply(qTela.setFromAxisAngle(new THREE.Vector3(0, 0, 1), -tela));
 }
 function cimaNaCamera() { // vetor "para cima" do mundo, em coordenadas da câmera (celular em pé, modo retrato)
   if (!orient) return null;
@@ -105,13 +116,20 @@ async function iniciar() {
   const fov = medir();
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
   ctx = cv.getContext('2d', { willReadFrequently: true });
-  alva = await AlvaAR.Initialize(w, h, fov);
-  camera.fov = 2 * Math.atan((h / 2) / alva.intrinsics.fy) * 180 / Math.PI;
+  try {
+    alva = await AlvaAR.Initialize(w, h, fov);
+    camera.fov = 2 * Math.atan((h / 2) / alva.intrinsics.fy) * 180 / Math.PI;
+  } catch (e) { // SLAM indisponível neste aparelho: segue no modo rápido
+    camera.fov = 2 * Math.atan(h / w * Math.tan(THREE.MathUtils.degToRad(fov / 2))) * 180 / Math.PI;
+    alva = null;
+  }
   camera.aspect = W / H; camera.updateProjectionMatrix();
   renderer.setSize(W, H, false);
   $('pontos').width = W; $('pontos').height = H;
   $('carregando').hidden = true; $('hud').hidden = false;
   montarCatalogo();
+  estado.inicio = performance.now();
+  if (!alva) modoRapido();
   requestAnimationFrame(quadro);
 }
 $('btnComecar').addEventListener('click', iniciar);
@@ -123,9 +141,12 @@ function quadro(t) {
   requestAnimationFrame(quadro);
   if (t - ultimo < 30) return; // ~30 quadros por segundo
   ultimo = t;
+  ptsCtx.clearRect(0, 0, W, H);
+  if (estado.modo === 'giro') { cameraPeloGiroscopio(); camera.updateMatrixWorld(); desenhar(t); return; }
+  // sem chão depois de 12 s: oferece o modo rápido
+  $('btnRapido').hidden = !(planos.length === 0 && t - estado.inicio > 12000);
   ctx.drawImage(video, recorte.x, recorte.y, recorte.w, recorte.h);
   const pose = alva.findCameraPose(ctx.getImageData(0, 0, w, h));
-  ptsCtx.clearRect(0, 0, W, H);
   if (pose) {
     aplicarPose(pose, camera.quaternion, camera.position);
     camera.updateMatrixWorld();
@@ -141,6 +162,9 @@ function quadro(t) {
     if (estado.rastreando) { estado.rastreando = false; status(); }
     pontosVerdes(false);
   }
+  desenhar(t);
+}
+function desenhar(t) {
   mundo.visible = estado.rastreando;
   if (estado.sel) { caixaSel.setFromObject(estado.sel); caixaSel.visible = estado.rastreando; }
   const agora = new Date();
@@ -168,6 +192,9 @@ function novoPlano(pp) {
   estado.cima = cima;
   const chao = Math.abs(n.dot(cima)) > (orient ? 0.7 : 0.35);
   if (!estado.k) estado.k = Math.abs(praCamera.dot(n)) / (chao ? ALTURA_CELULAR : DIST_PAREDE); // unidades do SLAM por metro
+  criarPlano(origem, n, chao);
+}
+function criarPlano(origem, n, chao) {
   const g = new THREE.Group();
   g.position.copy(origem);
   orientar(g, n, chao);
@@ -181,9 +208,29 @@ function novoPlano(pp) {
   mundo.add(g); planos.push(g);
   estado.procurar = false;
   if (navigator.vibrate) navigator.vibrate(40);
-  $('passos').hidden = true; $('barra').hidden = false;
+  $('passos').hidden = true; $('barra').hidden = false; $('btnRapido').hidden = true;
   aviso(chao ? '✅ Chão encontrado!' : '✅ Parede encontrada!', chao ? '#16a34a' : '#0284c7');
   status(); ui();
+}
+
+// ---------- modo rápido (giroscópio) ----------
+function chaoVirtual() {
+  estado.cima = new THREE.Vector3(0, 1, 0);
+  criarPlano(new THREE.Vector3(camera.position.x, -ALTURA_CELULAR, camera.position.z), new THREE.Vector3(0, 1, 0), true);
+}
+function paredeVirtual(dist = 2) { // parede de frente para o celular, a ~2 m
+  const f = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); f.y = 0;
+  if (f.lengthSq() < 1e-4) f.set(0, 0, -1);
+  f.normalize();
+  criarPlano(camera.position.clone().addScaledVector(f, dist).setY(0), f.clone().negate(), false);
+}
+function modoRapido() {
+  estado.modo = 'giro'; estado.k = 1; estado.rastreando = true; estado.procurar = false;
+  for (const g of planos) mundo.remove(g);
+  planos.length = 0; itens.length = 0;
+  camera.position.set(0, 0, 0); cameraPeloGiroscopio(); camera.updateMatrixWorld();
+  chaoVirtual();
+  aviso('⚡ Modo rápido: chão a 1,3 m', '#7c3aed');
 }
 // base do plano: chão → Y = normal; parede → Z = normal e Y = "para cima"
 function orientar(g, n, chao) {
@@ -291,6 +338,7 @@ function selecionar(o) { estado.sel = o; caixaSel.visible = !!o; if (o) caixaSel
 // ---------- interface ----------
 function status() {
   const st = $('status');
+  if (estado.modo === 'giro') { st.className = 'achou'; $('statusTxt').textContent = '⚡ Modo rápido (giroscópio) · gire o celular'; return; }
   if (estado.rastreando && planos.length) { st.className = 'achou'; $('statusTxt').textContent = `Ambiente reconhecido · ${planos.length} superfície${planos.length > 1 ? 's' : ''}`; }
   else if (estado.rastreando) { st.className = 'procurando'; $('statusTxt').textContent = 'Mapeando… continue mexendo devagar'; }
   else { st.className = 'procurando'; $('statusTxt').textContent = planos.length ? 'Perdi o lugar · volte devagar para onde estava' : 'Reconhecendo o ambiente…'; }
@@ -338,7 +386,9 @@ $('btnVariar').onclick = () => {
   m.userData.pronto.then(() => selecionar(o)); selecionar(o);
 };
 $('btnRemover').onclick = () => { const o = estado.sel; if (!o) return; o.parent.remove(o); itens.splice(itens.indexOf(o), 1); selecionar(null); };
-$('btnSuperficie').onclick = () => { estado.procurar = true; estado.quadrosOk = 0; selecionar(null); aviso('🔍 Aponte para a nova superfície e mexa devagar', '#0284c7'); };
+$('btnSuperficie').onclick = () => {
+  if (estado.modo === 'giro') { paredeVirtual(); return; } // no modo rápido: parede de frente, a 2 m
+  estado.procurar = true; estado.quadrosOk = 0; selecionar(null); aviso('🔍 Aponte para a nova superfície e mexa devagar', '#0284c7'); };
 $('btnTipo').onclick = () => { // corrige se o app confundiu chão com parede
   const g = estado.sel ? estado.sel.parent : planos[planos.length - 1]; if (!g) return;
   g.userData.chao = !g.userData.chao; orientar(g, g.userData.n, g.userData.chao);
@@ -346,7 +396,9 @@ $('btnTipo').onclick = () => { // corrige se o app confundiu chão com parede
   g.children.filter(o => itens.includes(o)).forEach(o => { o.position.set(o.position.x, g.userData.chao ? 0 : o.position.y, g.userData.chao ? o.position.z : 0.004); });
   aviso(g.userData.chao ? 'Agora é <b>chão</b>' : 'Agora é <b>parede</b>', '#0f172a');
 };
+$('btnRapido').onclick = () => modoRapido();
 $('btnReset').onclick = () => {
+  if (estado.modo === 'giro') { modoRapido(); return; }
   alva.reset();
   for (const g of planos) mundo.remove(g);
   planos.length = 0; itens.length = 0; estado.k = null; estado.procurar = true; estado.quadrosOk = 0; estado.armado = null;
@@ -362,5 +414,28 @@ document.querySelectorAll('.ql-item').forEach(a => a.addEventListener('click', e
 $('linkQL').onclick = e => { e.preventDefault(); $('ql').hidden = false; };
 $('btnQLFechar').onclick = () => { $('ql').hidden = true; };
 
+// ---------- 📸 foto do ambiente decorado (para salvar ou mandar no WhatsApp) ----------
+$('btnFoto').onclick = () => {
+  const dpr = renderer.getPixelRatio(), cw = Math.round(W * dpr), ch = Math.round(H * dpr);
+  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+  const x = c.getContext('2d');
+  const vw = video.videoWidth, vh = video.videoHeight, s = Math.max(cw / vw, ch / vh);
+  x.drawImage(video, (cw - vw * s) / 2, (ch - vh * s) / 2, vw * s, vh * s);  // câmera
+  const selVis = caixaSel.visible; caixaSel.visible = false;
+  renderer.render(cena, camera); x.drawImage(renderer.domElement, 0, 0, cw, ch); // objetos 3D
+  caixaSel.visible = selVis;
+  x.font = `700 ${15 * dpr}px -apple-system, Segoe UI, sans-serif`; x.fillStyle = 'rgba(255,255,255,.9)';
+  x.shadowColor = 'rgba(0,0,0,.5)'; x.shadowBlur = 6 * dpr;
+  x.fillText('🛋️ Decora RA', 14 * dpr, 30 * dpr);
+  // tudo síncrono: o iPhone só deixa compartilhar dentro do toque
+  const url = c.toDataURL('image/jpeg', 0.92), bin = atob(url.split(',')[1]), u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  const arq = new File([u8], 'minha-decoracao.jpg', { type: 'image/jpeg' });
+  const fl = $('flash'); fl.classList.remove('vai'); void fl.offsetWidth; fl.classList.add('vai');
+  if (navigator.canShare && navigator.canShare({ files: [arq] })) navigator.share({ files: [arq], title: 'Minha decoração (Decora RA)' }).catch(() => {});
+  else { const a = document.createElement('a'); a.href = url; a.download = arq.name; a.click(); }
+  window.ULTIMA_FOTO = url;
+};
+
 // para os testes automáticos
-window.LIVRE = { estado, planos, itens, armar: t => { estado.armado = t; ui(); } };
+window.LIVRE = { estado, planos, itens, armar: t => { estado.armado = t; ui(); }, modoRapido };

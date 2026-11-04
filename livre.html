@@ -21,6 +21,10 @@
   @keyframes balanca { 0%, 100% { transform: translateX(-18px); } 50% { transform: translateX(18px); } }
   #barra { position: absolute; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); background: var(--vidro);
     border-radius: 18px; padding: 12px 14px; box-shadow: 0 -4px 24px rgba(0, 0, 0, .3); max-width: 560px; margin: 0 auto; pointer-events: auto; }
+  .btn-rapido { display: block; width: 100%; margin-top: 12px; font: inherit; font-weight: 800; font-size: 15px; padding: 11px; border-radius: 12px; border: 0; background: #7c3aed; color: #fff; pointer-events: auto; }
+  #flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 30; }
+  #flash.vai { animation: flash .5s ease-out; }
+  @keyframes flash { from { opacity: .85; } to { opacity: 0; } }
   .exp { font-size: 11px; font-weight: 800; color: #7c3aed; background: #ede9fe; padding: 2px 8px; border-radius: 99px; }
 </style>
 </head>
@@ -35,7 +39,7 @@
       pela câmera. Escolha móveis, plantas e quadros <b>reais, em tamanho real</b>, e veja como ficam no seu ambiente antes de comprar.</p>
     <button id="btnComecar" class="btn-grande">📷 Começar</button>
     <p id="avisoHttps" class="aviso" hidden>⚠️ A câmera só funciona em endereço <b>https://</b>.</p>
-    <div class="links"><a href="index.html">← Voltar ao localizador</a> &nbsp;·&nbsp; <a href="#" id="linkQL">📱 AR nativo do iPhone</a></div>
+    <div class="links"><a href="index.html">← Início</a> &nbsp;·&nbsp; <a href="#" id="linkQL">📱 AR nativo do iPhone</a> &nbsp;·&nbsp; <a href="explicacao.html">🧠 Como funciona</a></div>
   </div>
 </section>
 
@@ -48,10 +52,13 @@
 <div id="hud" hidden>
   <div id="topo">
     <div id="status" class="procurando"><span class="pulso"></span><span id="statusTxt">Reconhecendo o ambiente…</span></div>
+    <button id="btnFoto" class="btn-icone" title="Tirar foto">📸</button>
     <button id="btnReset" class="btn-icone" title="Recomeçar">🔄</button>
   </div>
 
-  <div id="passos"><span class="grande">📱</span><span id="passosTxt">Aponte para o <b>chão</b> e mova o celular <b>devagar para os lados</b>, como se estivesse escaneando.</span></div>
+  <div id="passos"><span class="grande">📱</span><span id="passosTxt">Aponte para o <b>chão</b> e mova o celular <b>devagar para os lados</b>, como se estivesse escaneando.</span>
+    <button id="btnRapido" class="btn-rapido" hidden>⚡ Não achou o chão? Usar o modo rápido</button></div>
+  <div id="flash"></div>
   <div id="aviso" hidden></div>
 
   <div id="barra" hidden>

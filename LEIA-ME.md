@@ -20,6 +20,9 @@ se o sofá cabe, se a planta combina, em que altura fica o quadro. Evita compras
 - **Móveis e objetos:** modelos **escaneados por fotogrametria** de objetos reais (**Poly Haven**, licença **CC0**), com texturas PBR (couro, madeira, mármore).
 - **Quadros:** fotos de **obras de arte reais em domínio público** (Wikimedia Commons): *A Noite Estrelada*, *A Grande Onda de Kanagawa*, *Impressão, Nascer do Sol*, *O Quarto em Arles*, *O Beijo*, *Moça com Brinco de Pérola*, *Nenúfares* e *Os Girassóis*. O botão 🎨 troca a obra.
 - **Iluminação realista:** mapa de ambiente (reflexos) + **sombra de contato** sob os móveis.
+- **📸 Foto do ambiente decorado:** junta a câmera e os objetos 3D numa foto e abre o compartilhar do iPhone (WhatsApp, Fotos…).
+- **⚡ Modo rápido (rede de segurança):** se o SLAM não achar o chão em 12 s (pouca luz, chão liso) ou não carregar no aparelho, o app passa a usar só o **giroscópio**: chão virtual a 1,3 m, e **＋ superfície** cria uma parede a 2 m. Funciona sempre.
+- **🧠 Como funciona** (`explicacao.html`): página com o diagrama do processo, para mostrar no vídeo.
 
 ## Como usar no iPhone (modo sem placa)
 
@@ -29,6 +32,8 @@ se o sofá cabe, se a planta combina, em que altura fica o quadro. Evita compras
 4. Toque no objeto para **arrastar**, **↻ girar**, **− / +** (ou pinça) e **🎨 arte** (nos quadros).
 5. Para a **parede**: toque em **＋ superfície** e aponte para a parede, mexendo devagar. Depois escolha um quadro e toque na parede.
 6. Se o app confundir chão com parede: **↕️ É chão / é parede**. Se perder o lugar: volte devagar ou toque em 🔄.
+7. Não achou o chão em 12 s? Toque em **⚡ Usar o modo rápido**.
+8. Toque em **📸** para tirar a foto e compartilhar.
 
 > **Sobre a escala:** sem placa, a câmera sozinha não sabe medidas absolutas. O app supõe o celular a ~1,3 m do chão (pessoa em pé).
 > Se o objeto parecer grande ou pequeno demais, ajuste com − / +. No modo **com placa** a escala é exata (a placa tem 17 cm).

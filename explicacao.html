@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>Como Funciona · Decora RA</title>
+<link rel="icon" href="icones/icone-192.png">
+<style>
+  :root {
+    --fundo: #0b1120; --cartao: #111a2e; --borda: #1e2a44; --texto: #e2e8f0; --suave: #94a3b8;
+    --verde: #22c55e; --azul: #38bdf8; --roxo: #a78bfa; --ambar: #fbbf24;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--fundo); color: var(--texto); }
+  main { max-width: 860px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) 16px 48px; }
+  a { color: var(--azul); }
+  .voltar { font-weight: 700; text-decoration: none; font-size: 15px; }
+  h1 { font-size: clamp(30px, 7vw, 44px); letter-spacing: -1px; margin: 14px 0 4px; }
+  .sub { color: var(--suave); font-size: 17px; margin: 0 0 22px; line-height: 1.45; }
+  h2 { font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--suave); margin: 34px 0 12px; }
+  .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 18px; padding: 16px 18px; }
+  .problema { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .problema .cartao b { display: block; font-size: 17px; margin-bottom: 4px; }
+  .problema p { margin: 0; color: var(--suave); line-height: 1.45; font-size: 15px; }
+  svg { width: 100%; height: auto; display: block; }
+  .vert { display: none; max-width: 360px; margin: 0 auto; }
+  @media (max-width: 640px) { .horiz { display: none; } .vert { display: block; } }
+  .passos { counter-reset: p; display: grid; gap: 10px; margin-top: 14px; }
+  .passo { display: grid; grid-template-columns: 38px 1fr; gap: 12px; align-items: start; }
+  .passo::before { counter-increment: p; content: counter(p); width: 38px; height: 38px; border-radius: 12px; background: #1e293b;
+    display: grid; place-items: center; font-weight: 800; color: var(--verde); font-size: 17px; }
+  .passo b { font-size: 16px; }
+  .passo p { margin: 3px 0 0; color: var(--suave); line-height: 1.45; font-size: 15px; }
+  .modos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .modo .tag { display: inline-block; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 99px; margin-bottom: 8px; }
+  .modo b { display: block; font-size: 16px; margin-bottom: 4px; }
+  .modo p { margin: 0; color: var(--suave); font-size: 14px; line-height: 1.45; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td { padding: 9px 8px; border-top: 1px solid var(--borda); vertical-align: top; line-height: 1.4; }
+  td:first-child { font-weight: 700; white-space: nowrap; color: #fff; }
+  td:last-child { color: var(--suave); }
+  .nota { color: var(--suave); font-size: 13px; line-height: 1.5; margin-top: 10px; }
+  @media (max-width: 640px) { .problema, .modos { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <a class="voltar" href="index.html">← Voltar ao app</a>
+  <h1>Como o Decora RA funciona</h1>
+  <p class="sub">Um app de <b>Realidade Aumentada</b> que roda direto no navegador do iPhone e coloca móveis e quadros reais, em tamanho real, dentro da sua casa.</p>
+
+  <h2>O problema que ele resolve</h2>
+  <div class="problema">
+    <div class="cartao"><b>😕 Antes</b><p>Comprar um sofá ou um quadro “no olho”: será que cabe? combina? qual altura? Resultado: compras erradas e devoluções.</p></div>
+    <div class="cartao"><b>😃 Com o Decora RA</b><p>Aponto o celular, coloco o objeto no lugar exato e ando em volta dele. Tiro uma 📸 foto e mando para a família antes de comprar.</p></div>
+  </div>
+
+  <h2>Do quadro da câmera ao objeto 3D</h2>
+  <div class="cartao">
+    <svg class="horiz" viewBox="0 0 820 250" role="img" aria-label="Fluxo: câmera, SLAM, plano, toque vira raio, objeto 3D">
+      <defs>
+        <marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker>
+      </defs>
+      <g font-family="-apple-system, Segoe UI, sans-serif" text-anchor="middle">
+        <!-- 1 câmera -->
+        <rect x="10" y="40" width="140" height="120" rx="16" fill="#0f2a1a" stroke="#22c55e"/>
+        <text x="80" y="88" font-size="34">📷</text>
+        <text x="80" y="122" font-size="15" font-weight="700" fill="#e2e8f0">Câmera</text>
+        <text x="80" y="142" font-size="12" fill="#94a3b8">30 quadros/s</text>
+        <!-- 2 SLAM -->
+        <rect x="180" y="40" width="140" height="120" rx="16" fill="#0c2235" stroke="#38bdf8"/>
+        <g fill="#4ade80"><circle cx="215" cy="70" r="3"/><circle cx="240" cy="62" r="3"/><circle cx="268" cy="75" r="3"/><circle cx="290" cy="64" r="3"/><circle cx="230" cy="88" r="3"/><circle cx="282" cy="90" r="3"/></g>
+        <text x="250" y="122" font-size="15" font-weight="700" fill="#e2e8f0">SLAM</text>
+        <text x="250" y="142" font-size="12" fill="#94a3b8">pontos + posição</text>
+        <!-- 3 plano -->
+        <rect x="350" y="40" width="140" height="120" rx="16" fill="#1e1537" stroke="#a78bfa"/>
+        <path d="M375 100 L465 100 L445 72 L395 72 Z" fill="#a78bfa" fill-opacity=".35" stroke="#a78bfa"/>
+        <text x="420" y="122" font-size="15" font-weight="700" fill="#e2e8f0">Plano</text>
+        <text x="420" y="142" font-size="12" fill="#94a3b8">chão ou parede</text>
+        <!-- 4 raio -->
+        <rect x="520" y="40" width="140" height="120" rx="16" fill="#2b2110" stroke="#fbbf24"/>
+        <text x="575" y="88" font-size="30">👆</text>
+        <line x1="598" y1="70" x2="640" y2="98" stroke="#fbbf24" stroke-width="2.5" stroke-dasharray="5 4"/>
+        <text x="590" y="122" font-size="15" font-weight="700" fill="#e2e8f0">Toque = raio</text>
+        <text x="590" y="142" font-size="12" fill="#94a3b8">cruza o plano</text>
+        <!-- 5 objeto -->
+        <rect x="690" y="40" width="120" height="120" rx="16" fill="#0f2a1a" stroke="#22c55e"/>
+        <text x="750" y="90" font-size="34">🛋️</text>
+        <text x="750" y="122" font-size="15" font-weight="700" fill="#e2e8f0">Objeto 3D</text>
+        <text x="750" y="142" font-size="12" fill="#94a3b8">tamanho real</text>
+        <!-- setas -->
+        <g stroke="#64748b" stroke-width="2" marker-end="url(#seta)"><line x1="152" y1="100" x2="176" y2="100"/><line x1="322" y1="100" x2="346" y2="100"/><line x1="492" y1="100" x2="516" y2="100"/><line x1="662" y1="100" x2="686" y2="100"/></g>
+        <!-- laço -->
+        <path d="M750 162 C 750 225, 80 225, 80 162" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#seta)"/>
+        <text x="415" y="236" font-size="13" fill="#94a3b8">repete a cada quadro: o objeto fica parado no lugar enquanto você anda</text>
+      </g>
+    </svg>
+    <svg class="vert" viewBox="0 0 360 560" role="img" aria-label="Fluxo: câmera, SLAM, plano, toque vira raio, objeto 3D"><g font-family="-apple-system, Segoe UI, sans-serif"><rect x="10" y="10" width="340" height="86" rx="16" fill="#0f2a1a" stroke="#22c55e"/><text x="52" y="64" font-size="30" text-anchor="middle" fill="#22c55e">📷</text><text x="92" y="48" font-size="19" font-weight="700" fill="#e2e8f0">1. Câmera</text><text x="92" y="72" font-size="13.5" fill="#94a3b8">30 quadros por segundo</text><path d="M180 98 L180 116" stroke="#64748b" stroke-width="2.5" marker-end="url(#seta2)"/><rect x="10" y="120" width="340" height="86" rx="16" fill="#0c2235" stroke="#38bdf8"/><text x="52" y="174" font-size="30" text-anchor="middle" fill="#38bdf8">🟢</text><text x="92" y="158" font-size="19" font-weight="700" fill="#e2e8f0">2. SLAM</text><text x="92" y="182" font-size="13.5" fill="#94a3b8">segue pontos e calcula onde o celular está</text><path d="M180 208 L180 226" stroke="#64748b" stroke-width="2.5" marker-end="url(#seta2)"/><rect x="10" y="230" width="340" height="86" rx="16" fill="#1e1537" stroke="#a78bfa"/><text x="52" y="284" font-size="30" text-anchor="middle" fill="#a78bfa">▱</text><text x="92" y="268" font-size="19" font-weight="700" fill="#e2e8f0">3. Plano</text><text x="92" y="292" font-size="13.5" fill="#94a3b8">encontra o chão ou a parede</text><path d="M180 318 L180 336" stroke="#64748b" stroke-width="2.5" marker-end="url(#seta2)"/><rect x="10" y="340" width="340" height="86" rx="16" fill="#2b2110" stroke="#fbbf24"/><text x="52" y="394" font-size="30" text-anchor="middle" fill="#fbbf24">👆</text><text x="92" y="378" font-size="19" font-weight="700" fill="#e2e8f0">4. Toque = raio</text><text x="92" y="402" font-size="13.5" fill="#94a3b8">o raio cruza o plano: ali fica o objeto</text><path d="M180 428 L180 446" stroke="#64748b" stroke-width="2.5" marker-end="url(#seta2)"/><rect x="10" y="450" width="340" height="86" rx="16" fill="#0f2a1a" stroke="#22c55e"/><text x="52" y="504" font-size="30" text-anchor="middle" fill="#22c55e">🛋️</text><text x="92" y="488" font-size="19" font-weight="700" fill="#e2e8f0">5. Objeto 3D</text><text x="92" y="512" font-size="13.5" fill="#94a3b8">em tamanho real, por cima do vídeo</text></g><defs><marker id="seta2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker></defs></svg>
+    <p class="nota" style="text-align:center">Repete a cada quadro: por isso o objeto fica parado no lugar enquanto você anda.</p>
+  </div>
+
+  <div class="passos">
+    <div class="passo"><div><b>A câmera manda imagens</b><p>Cada quadro (30 por segundo) é reduzido para 360 px de largura e enviado ao SLAM. É leve o bastante para o celular.</p></div></div>
+    <div class="passo"><div><b>O SLAM descobre onde o celular está</b><p><i>Simultaneous Localization and Mapping</i>: ele acompanha pontos marcantes da imagem (os pontinhos verdes) e, pelo jeito como se movem, calcula a <b>posição e a rotação</b> do celular no espaço (6 graus de liberdade).</p></div></div>
+    <div class="passo"><div><b>Ele encontra uma superfície</b><p>Com pontos suficientes, ajusta um <b>plano</b> a eles. O giroscópio diz onde é “para cima”, e assim o app sabe se é <b>chão</b> ou <b>parede</b>.</p></div></div>
+    <div class="passo"><div><b>O toque vira um raio</b><p>O ponto tocado na tela vira um raio que sai da câmera (<i>raycasting</i>). Onde o raio cruza o plano, o objeto é colocado.</p></div></div>
+    <div class="passo"><div><b>O objeto é desenhado por cima do vídeo</b><p>O three.js desenha o modelo 3D com a mesma perspectiva da câmera, com <b>iluminação de ambiente</b> (reflexos) e <b>sombra de contato</b>. Como a posição é recalculada a cada quadro, o objeto parece estar mesmo ali.</p></div></div>
+  </div>
+
+  <h2>Três formas de usar</h2>
+  <div class="modos">
+    <div class="cartao modo"><span class="tag" style="background:#14532d;color:#86efac">SEM PLACA</span><b>🪄 Decorar o ambiente</b><p>SLAM no navegador. Reconhece chão e paredes sozinho. Se faltar luz, o <b>⚡ modo rápido</b> usa só o giroscópio.</p></div>
+    <div class="cartao modo"><span class="tag" style="background:#1e3a8a;color:#bfdbfe">COM PLACA</span><b>📍 Placa na parede</b><p>Rastreamento de imagem: a placa é a âncora e dá a <b>escala exata</b>. Inclui o localizador da casa, com mapa 3D e rotas.</p></div>
+    <div class="cartao modo"><span class="tag" style="background:#3b0764;color:#e9d5ff">NATIVO</span><b>📱 AR do iPhone</b><p>Abre o mesmo objeto na RA do próprio iOS (AR Quick Look / ARKit), usando arquivos USDZ gerados pelo projeto.</p></div>
+  </div>
+
+  <h2>Tecnologias</h2>
+  <div class="cartao">
+    <table>
+      <tr><td>WebAR</td><td>Roda no Safari, sem instalar nada, hospedado no GitHub Pages com HTTPS (exigido para usar a câmera)</td></tr>
+      <tr><td>AlvaAR</td><td>SLAM visual compilado para WebAssembly (C++ rodando no navegador)</td></tr>
+      <tr><td>three.js</td><td>Desenho 3D em WebGL, materiais PBR, raycasting, mapa de ambiente</td></tr>
+      <tr><td>MindAR + A-Frame</td><td>Reconhecimento de imagem (modo com placa)</td></tr>
+      <tr><td>Modelos 3D</td><td>Objetos reais escaneados por fotogrametria (Poly Haven, CC0)</td></tr>
+      <tr><td>Obras de arte</td><td>Fotos em domínio público (Wikimedia Commons): Van Gogh, Hokusai, Monet, Klimt, Vermeer</td></tr>
+      <tr><td>PWA</td><td>“Adicionar à Tela de Início”: abre como app, em tela cheia</td></tr>
+    </table>
+    <p class="nota"><b>Por que não Unity?</b> A atividade permite “Unity ou outro software”. Para instalar um app Unity no iPhone é obrigatório compilar num Mac com Xcode. Em WebAR o protótipo roda direto no iPhone, abrindo um link.</p>
+  </div>
+</main>
+</body>
+</html>

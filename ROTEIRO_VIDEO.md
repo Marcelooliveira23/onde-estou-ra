@@ -4,6 +4,12 @@ Grave com a **Gravação de Tela do iPhone com o microfone ligado** e fale com a
 Peso na nota: **projeto funcionando 40%**, **utilidade 30%**, **explicação 30%**.
 Dica: abra o app pelo **ícone na Tela de Início** (fica em tela cheia) e grave numa sala **bem iluminada**.
 
+### 🛟 Plano B (para o vídeo nunca ficar sem RA funcionando)
+1. **Ensaie antes** no mesmo cômodo. O SLAM gosta de chão **com textura** (tapete, piso de madeira, objetos no chão). Chão liso e branco é difícil.
+2. Se em 12 s ele não achar o chão, aparece **⚡ Usar o modo rápido** (giroscópio): toque e continue o roteiro normalmente.
+   Fale: *"aqui a luz está fraca, então o app passou para o modo rápido, que usa o giroscópio"*. Mostrar que o app se adapta também conta ponto.
+3. Último recurso: **📱 AR nativo do iPhone** (Quick Look), que sempre funciona.
+
 ---
 
 ### 1. Apresentação (0:00–0:20): tela inicial
@@ -19,16 +25,21 @@ Toque em **🪄 Decorar o ambiente** → **Começar**. Aponte para o chão e mex
 Escolha **Poltrona** e toque no chão. Ande em volta.
 > "Escolho uma poltrona e toco no chão: ela fica **parada no lugar**, mesmo quando eu ando em volta. Posso **arrastar**, **girar** e mudar o tamanho."
 
-Coloque uma **Planta grande** e a **Mesa lateral**.
+Coloque uma **Planta grande** e a **Mesa lateral**. Toque em **↻ girar** na poltrona.
 
 ### 4. Quadro na parede (1:50–2:30)
 Toque em **＋ superfície**, aponte para a parede e mexa devagar. Escolha **Parede → Quadro famoso** e toque na parede. Toque em **🎨 arte**.
 > "Agora a parede: o app encontrou a parede, e eu penduro um quadro. No 🎨 eu troco a obra: Van Gogh, Hokusai, Monet…"
 
-### 5. Outros modos (2:30–2:55), opcional
+### 4b. Foto para compartilhar (2:30–2:40)
+Toque em **📸**.
+> "Com um toque eu tiro uma **foto do ambiente decorado** e mando para a família pelo WhatsApp, antes de comprar."
+
+### 5. Outros modos (2:40–2:55), opcional
 > "Também tem o modo **com placa**, em que uma imagem na parede serve de âncora e deixa a escala exata, com um localizador da casa. E o botão **AR do iPhone** abre os mesmos objetos na RA nativa do iOS."
 
 ### 6. Como foi feito (2:55–3:40)
+Abra **🧠 Como funciona** (link na tela inicial) e vá descendo pelo diagrama enquanto fala.
 > "O professor permitiu Unity ou outro software. Como eu queria rodar no iPhone, e o Unity exige um Mac para gerar o app de iOS, fiz em **WebAR**: o app roda direto no **Safari**, hospedado no **GitHub Pages**. Usei:
 > - **AlvaAR**, uma biblioteca de **SLAM** em WebAssembly: a cada quadro da câmera ela calcula a **posição do celular** e encontra **planos** como o chão e a parede;
 > - **three.js**, para desenhar os modelos 3D com **iluminação realista**;
@@ -44,6 +55,6 @@ Toque em **＋ superfície**, aponte para a parede e mexa devagar. Escolha **Par
 ### ✅ Checklist antes de enviar
 - [ ] Gravado **na tela do iPhone**, com o app rodando de verdade (não o simulador)
 - [ ] **Sua voz** explicando, **sem música**
-- [ ] Mostrou: reconhecer o chão → colocar móvel → andar em volta → parede → quadro → trocar a obra
+- [ ] Mostrou: reconhecer o chão → colocar móvel → andar em volta → parede → quadro → trocar a obra → 📸 foto
 - [ ] Explicou a **utilidade** e **como foi feito**
 - [ ] YouTube **Não listado** → link no **AVA Univirtus**
