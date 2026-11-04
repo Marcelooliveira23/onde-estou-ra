@@ -6,11 +6,12 @@ Protótipo de **Realidade Aumentada** para a disciplina *Realidade Virtual e Aum
 **Utilidade:** ver **móveis, plantas e quadros de verdade, em tamanho real**, dentro da própria casa **antes de comprar**:
 se o sofá cabe, se a planta combina, em que altura fica o quadro. Evita compras erradas e devoluções.
 
-## Os 3 modos
+## Os 4 modos
 
 | Modo | Como funciona | Precisa de placa? |
 |---|---|---|
 | **🪄 Decorar o ambiente** (`livre.html`) | **SLAM visual** no navegador (AlvaAR/WebAssembly): reconhece o **chão** e as **paredes** pela câmera. Toque no lugar e o objeto aparece ali, em tamanho real. Arraste, gire, aumente/diminua, troque a obra do quadro | **Não** |
+| **🗺️ Mapear a casa** (`mapear.html`) | Volta de 360° no meio de cada cômodo mirando os **cantos do chão**, **portas**, **janelas** e **passagens**. Mede pela **inclinação do celular** (d = h ÷ tan θ) e desenha a **planta ao vivo** no canto da tela. Passou pela porta, o próximo cômodo é **emendado** na planta. No fim: **planta 2D com medidas e m²**, **maquete 3D** e imagem para compartilhar | **Não** |
 | **📍 Com placa na parede** (`index.html`) | **Rastreamento de imagem** (MindAR): a placa vira a âncora. Localizador da casa (mapa 3D no canto, rota até o cômodo, como no exemplo do professor) + **decoração presa à parede**, salva no celular | Sim |
 | **📱 AR nativo do iPhone** | **AR Quick Look** do iOS (ARKit) com arquivos `.usdz` gerados dos mesmos modelos | Não |
 
@@ -34,6 +35,18 @@ se o sofá cabe, se a planta combina, em que altura fica o quadro. Evita compras
 6. Se o app confundir chão com parede: **↕️ É chão / é parede**. Se perder o lugar: volte devagar ou toque em 🔄.
 7. Não achou o chão em 12 s? Toque em **⚡ Usar o modo rápido**.
 8. Toque em **📸** para tirar a foto e compartilhar.
+
+## Como usar no iPhone (mapear a casa)
+
+1. **🗺️ Mapear a casa** → ajuste a **altura do celular** (peito; pessoa de 1,70 m ≈ 1,40 m) → **📷 Começar** → permita câmera e movimento.
+2. Escolha o cômodo (**Sala**, **Cozinha**…). Fique em pé **no meio** dele.
+3. Gire devagar. A cada **canto do chão** (onde duas paredes se encontram), ponha a **mira** e toque **📍 Canto**. A planta aparece no canto da tela.
+4. Viu uma porta, janela ou passagem? Mire a **base** dela no chão e toque **🚪 / 🪟 / ↔️**. Errou? **↩️ Voltar**.
+5. Volta completa (anel em 100%) → **✅ Concluir**: o app esquadreja as paredes, encaixa portas e janelas e pode sugerir janelas pela **claridade** 💡.
+6. Toque em **➡️ Porta 1 · Sala**, passe pela porta, escolha o novo cômodo, pare no meio, **mire a soleira da porta por onde entrou** e toque **🚪 Entrei por esta porta**. Repita o passo 3.
+7. **🗺️** abre a planta: **2D com medidas**, **🧊 maquete 3D** (gire com o dedo) e **📤 Compartilhar** (imagem PNG). A planta fica salva no celular.
+
+> **Precisão:** depende da altura informada e de mirar bem o canto. Erro típico de 5 a 10 cm por metro. Para conferir, meça uma parede com trena e ajuste a altura.
 
 > **Sobre a escala:** sem placa, a câmera sozinha não sabe medidas absolutas. O app supõe o celular a ~1,3 m do chão (pessoa em pé).
 > Se o objeto parecer grande ou pequeno demais, ajuste com − / +. No modo **com placa** a escala é exata (a placa tem 17 cm).
@@ -138,6 +151,7 @@ No mesmo endereço, `http://localhost:8080/index.html` usa a **webcam** do PC de
 | Minimapa 3D estilo game | `js/minimapa3d.js` | segunda cena three.js, câmera em 3ª pessoa |
 | Planta, rotas e direção | `js/casa.js` | busca em largura pelas portas; **produto escalar** com os vetores "direita" e "frente" de quem olha a placa |
 | Interface, voz, chegada | `js/app.js` | HTML/SVG, `speechSynthesis` |
+| Mapear a casa | `mapear.html`, `js/mapear.js` | **giroscópio** + **trigonometria** (d = h ÷ tan θ); esquadrejamento por retas; emenda dos cômodos pela porta em comum (rotação + translação); claridade para sugerir janelas; planta em Canvas 2D e maquete em three.js |
 | Decorar sem placa | `livre.html`, `js/livre.js` | **SLAM** (AlvaAR): pose da câmera a cada quadro + ajuste de plano; o toque vira um raio que cruza o plano |
 | Modo Decorar (placa) | `js/decor.js`, `js/moveis.js` | o toque vira um **raio** (Raycaster) que cruza o **plano da parede** definido pela placa; objetos 3D feitos em código, em metros |
 | AR nativo do iPhone | `modelos/*.usdz` | **AR Quick Look** do iOS (ARKit detecta chão e paredes), arquivos USDZ gerados dos mesmos modelos |
@@ -147,4 +161,4 @@ No mesmo endereço, `http://localhost:8080/index.html` usa a **webcam** do PC de
 - **Modelos 3D:** [Poly Haven](https://polyhaven.com) (CC0, domínio público).
 - **Obras de arte:** fotos em domínio público do [Wikimedia Commons](https://commons.wikimedia.org).
 - **Bibliotecas:** MindAR, A-Frame, three.js e qrcode-generator (MIT); **AlvaAR** (SLAM, **GPL-3.0**; veja `lib/LICENSE-AlvaAR-GPL3.txt`).
-- Feito para este projeto: a interface, o modo decorar (posicionamento por raio, planos, escala), o localizador (maquete, minimapa, rotas), as placas, o quadro e o relógio 3D.
+- Feito para este projeto: a interface, o modo decorar (posicionamento por raio, planos, escala), o mapeamento da casa (medição por inclinação, esquadrejamento, emenda dos cômodos, planta e maquete), o localizador (maquete, minimapa, rotas), as placas, o quadro e o relógio 3D.

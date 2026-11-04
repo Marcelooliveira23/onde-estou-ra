@@ -12,13 +12,13 @@ Dica: abra o app pelo **ícone na Tela de Início** (fica em tela cheia) e grave
 
 ---
 
-### 1. Apresentação (0:00–0:20): tela inicial
+### 1. Apresentação (0:00–0:15): tela inicial
 > "Olá, meu nome é ______. Este é o meu protótipo de Realidade Aumentada: o **Decora RA**, um app para **decorar a casa** com móveis e quadros virtuais em **tamanho real**."
 
-### 2. Utilidade (0:20–0:50)
+### 2. Utilidade (0:15–0:35)
 > "Quem vai comprar um sofá ou um quadro sempre fica na dúvida: será que cabe? Será que combina? Com o app eu **vejo o objeto dentro da minha sala antes de comprar**. Os móveis são **modelos 3D escaneados de objetos reais**, e os quadros são **obras famosas** em domínio público."
 
-### 3. RA sem placa: reconhecendo o ambiente (0:50–1:50), parte principal
+### 3. RA sem placa: reconhecendo o ambiente (0:35–1:25), parte principal
 Toque em **🪄 Decorar o ambiente** → **Começar**. Aponte para o chão e mexa devagar.
 > "O app não precisa de placa nem de QR code: ele usa **SLAM**, que reconhece o ambiente pela câmera. Esses pontinhos verdes são pontos do chão que ele está acompanhando… pronto: **chão encontrado**."
 
@@ -27,27 +27,41 @@ Escolha **Poltrona** e toque no chão. Ande em volta.
 
 Coloque uma **Planta grande** e a **Mesa lateral**. Toque em **↻ girar** na poltrona.
 
-### 4. Quadro na parede (1:50–2:30)
+### 4. Quadro na parede (1:25–1:55)
 Toque em **＋ superfície**, aponte para a parede e mexa devagar. Escolha **Parede → Quadro famoso** e toque na parede. Toque em **🎨 arte**.
 > "Agora a parede: o app encontrou a parede, e eu penduro um quadro. No 🎨 eu troco a obra: Van Gogh, Hokusai, Monet…"
 
-### 4b. Foto para compartilhar (2:30–2:40)
+### 4b. Foto para compartilhar (1:55–2:05)
 Toque em **📸**.
 > "Com um toque eu tiro uma **foto do ambiente decorado** e mando para a família pelo WhatsApp, antes de comprar."
 
-### 5. Outros modos (2:40–2:55), opcional
+### 4c. Mapear a casa (2:05–3:05): o "uau" do vídeo
+Volte ao início → **🗺️ Mapear a casa** → **Começar** → **Sala**. Fique no meio do cômodo.
+> "Agora o app vai **montar a planta da minha casa**. Eu fico no meio do cômodo e dou uma volta de 360°, mirando os **cantos do chão**."
+
+Marque 4 cantos, uma **🚪 porta** e uma **🪟 janela**. Mostre a **planta ao vivo** crescendo no canto da tela. **✅ Concluir**.
+> "Ele mede pela **inclinação do celular**: sabendo a altura do celular e o ângulo, a distância é **altura ÷ tangente do ângulo**. Pronto: a sala tem tantos metros quadrados."
+
+Toque **➡️ Porta**, vá para o próximo cômodo, **mire a porta por onde entrou** → marque os cantos → **✅**.
+> "Quando eu passo pela porta, o app **emenda** o próximo cômodo na planta, porque a porta é o mesmo ponto nos dois cômodos."
+
+Toque **🗺️** → **🧊 Maquete 3D** e gire com o dedo.
+> "No fim eu tenho a **planta com as medidas** e uma **maquete 3D** da casa, que posso mandar para o arquiteto ou o marceneiro."
+
+### 5. Outros modos (opcional, uma frase)
 > "Também tem o modo **com placa**, em que uma imagem na parede serve de âncora e deixa a escala exata, com um localizador da casa. E o botão **AR do iPhone** abre os mesmos objetos na RA nativa do iOS."
 
-### 6. Como foi feito (2:55–3:40)
+### 6. Como foi feito (3:05–3:45)
 Abra **🧠 Como funciona** (link na tela inicial) e vá descendo pelo diagrama enquanto fala.
 > "O professor permitiu Unity ou outro software. Como eu queria rodar no iPhone, e o Unity exige um Mac para gerar o app de iOS, fiz em **WebAR**: o app roda direto no **Safari**, hospedado no **GitHub Pages**. Usei:
 > - **AlvaAR**, uma biblioteca de **SLAM** em WebAssembly: a cada quadro da câmera ela calcula a **posição do celular** e encontra **planos** como o chão e a parede;
 > - **three.js**, para desenhar os modelos 3D com **iluminação realista**;
+> - o **giroscópio** e trigonometria para medir a casa e desenhar a planta;
 > - modelos **escaneados por fotogrametria** (Poly Haven) e obras de arte em **domínio público**.
 >
 > Para colocar o objeto, o toque na tela vira um **raio** que sai da câmera, e o ponto onde ele cruza o plano do chão ou da parede é onde o objeto fica."
 
-### 7. Encerramento (3:40–4:00)
+### 7. Encerramento (3:45–4:00)
 > "Com isso dá para planejar a decoração inteira antes de gastar. Obrigado!"
 
 ---
@@ -56,5 +70,6 @@ Abra **🧠 Como funciona** (link na tela inicial) e vá descendo pelo diagrama 
 - [ ] Gravado **na tela do iPhone**, com o app rodando de verdade (não o simulador)
 - [ ] **Sua voz** explicando, **sem música**
 - [ ] Mostrou: reconhecer o chão → colocar móvel → andar em volta → parede → quadro → trocar a obra → 📸 foto
+- [ ] Mostrou: 🗺️ mapear 2 cômodos → planta ao vivo → emenda pela porta → maquete 3D
 - [ ] Explicou a **utilidade** e **como foi feito**
 - [ ] YouTube **Não listado** → link no **AVA Univirtus**

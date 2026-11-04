@@ -33,7 +33,7 @@
     display: grid; place-items: center; font-weight: 800; color: var(--verde); font-size: 17px; }
   .passo b { font-size: 16px; }
   .passo p { margin: 3px 0 0; color: var(--suave); line-height: 1.45; font-size: 15px; }
-  .modos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .modos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .modo .tag { display: inline-block; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 99px; margin-bottom: 8px; }
   .modo b { display: block; font-size: 16px; margin-bottom: 4px; }
   .modo p { margin: 0; color: var(--suave); font-size: 14px; line-height: 1.45; }
@@ -109,10 +109,46 @@
     <div class="passo"><div><b>O objeto é desenhado por cima do vídeo</b><p>O three.js desenha o modelo 3D com a mesma perspectiva da câmera, com <b>iluminação de ambiente</b> (reflexos) e <b>sombra de contato</b>. Como a posição é recalculada a cada quadro, o objeto parece estar mesmo ali.</p></div></div>
   </div>
 
-  <h2>Três formas de usar</h2>
+  <h2 id="mapa">🗺️ Mapear a casa: medir sem LiDAR</h2>
+  <div class="cartao">
+    <svg viewBox="0 0 640 270" role="img" aria-label="Pessoa segurando o celular a uma altura h; a mira aponta para o canto do chão com um ângulo theta abaixo do horizonte; a distância é h dividido pela tangente de theta">
+      <g font-family="-apple-system, Segoe UI, sans-serif">
+        <line x1="20" y1="222" x2="620" y2="222" stroke="#475569" stroke-width="3"/>
+        <line x1="562" y1="30" x2="562" y2="222" stroke="#475569" stroke-width="6"/>
+        <text x="575" y="60" font-size="13" fill="#94a3b8">parede</text>
+        <circle cx="80" cy="62" r="16" fill="none" stroke="#e2e8f0" stroke-width="3"/>
+        <path d="M80 78 L80 160 M80 160 L64 222 M80 160 L96 222 M80 100 L112 112" stroke="#e2e8f0" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <rect x="108" y="100" width="9" height="22" rx="2" fill="#38bdf8"/>
+        <line x1="117" y1="111" x2="420" y2="111" stroke="#64748b" stroke-width="1.5" stroke-dasharray="6 5"/>
+        <text x="330" y="102" font-size="13" fill="#94a3b8">horizonte</text>
+        <line x1="117" y1="111" x2="560" y2="220" stroke="#4ade80" stroke-width="2.5"/>
+        <circle cx="560" cy="220" r="7" fill="none" stroke="#4ade80" stroke-width="3"/>
+        <path d="M207 111 A90 90 0 0 1 204 132" stroke="#fbbf24" stroke-width="2.5" fill="none"/>
+        <text x="214" y="129" font-size="18" font-weight="700" fill="#fbbf24">θ</text>
+        <line x1="135" y1="113" x2="135" y2="220" stroke="#a78bfa" stroke-width="2" stroke-dasharray="4 4"/>
+        <text x="142" y="172" font-size="15" font-weight="700" fill="#a78bfa">h = 1,40 m</text>
+        <path d="M117 246 L556 246" stroke="#38bdf8" stroke-width="2" marker-start="url(#s3)" marker-end="url(#s3)"/>
+        <text x="336" y="266" font-size="15" font-weight="700" fill="#38bdf8" text-anchor="middle">d = h ÷ tan θ</text>
+        <text x="420" y="160" font-size="13" fill="#4ade80">mira no canto do chão</text>
+      </g>
+      <defs><marker id="s3" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#38bdf8"/></marker></defs>
+    </svg>
+    <p class="nota" style="margin-top:4px">O Safari não dá acesso ao LiDAR do iPhone. Por isso o app mede com <b>trigonometria</b>: a altura do celular (h) é conhecida, e o giroscópio dá o ângulo θ abaixo do horizonte e a direção.
+      Exemplo: h = 1,40 m e θ = 17° → d = 1,40 ÷ 0,306 ≈ <b>4,6 m</b>. A mira fica sempre no centro da imagem, então a medida não depende da lente.</p>
+  </div>
+  <div class="passos">
+    <div class="passo"><div><b>Volta de 360°</b><p>No meio do cômodo, você gira e mira cada <b>canto do chão</b>. Cada canto vira um ponto (x, z) da planta: direção (giroscópio) + distância (d = h ÷ tan θ). O anel mostra quanto da volta já foi feito.</p></div></div>
+    <div class="passo"><div><b>Esquadrejar</b><p>Casas têm cantos de 90°. O app acha a direção principal das paredes e endireita cada uma para 0° ou 90°, recalculando os cantos como cruzamento das retas. Os pequenos erros de mira somem.</p></div></div>
+    <div class="passo"><div><b>Portas, janelas e passagens</b><p>Mirando a base delas, cada uma é encaixada na parede mais próxima. Além disso, o app guarda a <b>claridade</b> de cada direção da volta: os pontos bem mais claros que o resto viram uma <b>sugestão de janela</b> 💡, que você confirma.</p></div></div>
+    <div class="passo"><div><b>Emendar os cômodos</b><p>Você escolhe a porta e passa por ela. No novo cômodo, mira a mesma porta: como ela é <b>o mesmo ponto nos dois cômodos</b>, o app gira e encaixa o novo cômodo do outro lado daquela parede. A planta da casa vai crescendo, cômodo por cômodo.</p></div></div>
+    <div class="passo"><div><b>Planta 2D e maquete 3D</b><p>As paredes viram uma planta com medidas e área (m²) e uma <b>maquete 3D</b> com portas e janelas, que dá para girar com o dedo. A planta vira imagem para mandar ao arquiteto ou ao marceneiro.</p></div></div>
+  </div>
+
+  <h2>Quatro formas de usar</h2>
   <div class="modos">
     <div class="cartao modo"><span class="tag" style="background:#14532d;color:#86efac">SEM PLACA</span><b>🪄 Decorar o ambiente</b><p>SLAM no navegador. Reconhece chão e paredes sozinho. Se faltar luz, o <b>⚡ modo rápido</b> usa só o giroscópio.</p></div>
     <div class="cartao modo"><span class="tag" style="background:#1e3a8a;color:#bfdbfe">COM PLACA</span><b>📍 Placa na parede</b><p>Rastreamento de imagem: a placa é a âncora e dá a <b>escala exata</b>. Inclui o localizador da casa, com mapa 3D e rotas.</p></div>
+    <div class="cartao modo"><span class="tag" style="background:#713f12;color:#fde68a">SEM PLACA</span><b>🗺️ Mapear a casa</b><p>Volta de 360° em cada cômodo: mede os cantos pela inclinação do celular e monta a <b>planta da casa</b> (2D com medidas e maquete 3D).</p></div>
     <div class="cartao modo"><span class="tag" style="background:#3b0764;color:#e9d5ff">NATIVO</span><b>📱 AR do iPhone</b><p>Abre o mesmo objeto na RA do próprio iOS (AR Quick Look / ARKit), usando arquivos USDZ gerados pelo projeto.</p></div>
   </div>
 
@@ -121,6 +157,7 @@
     <table>
       <tr><td>WebAR</td><td>Roda no Safari, sem instalar nada, hospedado no GitHub Pages com HTTPS (exigido para usar a câmera)</td></tr>
       <tr><td>AlvaAR</td><td>SLAM visual compilado para WebAssembly (C++ rodando no navegador)</td></tr>
+      <tr><td>Giroscópio</td><td>DeviceOrientation: direção e inclinação do celular. No mapeamento, vira medida pela trigonometria (d = h ÷ tan θ)</td></tr>
       <tr><td>three.js</td><td>Desenho 3D em WebGL, materiais PBR, raycasting, mapa de ambiente</td></tr>
       <tr><td>MindAR + A-Frame</td><td>Reconhecimento de imagem (modo com placa)</td></tr>
       <tr><td>Modelos 3D</td><td>Objetos reais escaneados por fotogrametria (Poly Haven, CC0)</td></tr>

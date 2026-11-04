@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f172a">
+<title>Mapear a casa · Decora RA</title>
+<link rel="stylesheet" href="css/estilo.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icones/icone-180.png">
+<link rel="icon" href="icones/icone-192.png">
+<style>
+  #video, #gl { position: fixed; inset: 0; width: 100%; height: 100%; }
+  #video { object-fit: cover; z-index: 0; background: #000; }
+  #gl { z-index: 1; touch-action: none; }
+  .exp { font-size: 11px; font-weight: 800; color: #7c3aed; background: #ede9fe; padding: 2px 8px; border-radius: 99px; }
+  .altura { margin: 16px auto 0; display: flex; align-items: center; justify-content: center; gap: 10px; color: #e2e8f0; font-size: 14px; }
+  .altura button, .alt-mini button { width: 36px; height: 36px; border-radius: 10px; border: 0; font-size: 20px; font-weight: 800; background: #334155; color: #fff; }
+  .altura b { font-size: 20px; color: #fff; min-width: 74px; }
+  .nota { font-size: 12.5px; color: #94a3b8; margin: 6px 0 0; line-height: 1.4; }
+
+  /* mira no centro da tela: o ponto do chão que está sendo medido */
+  #mira { position: fixed; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; z-index: 5; pointer-events: none;
+    border: 3px solid #fff; border-radius: 50%; box-shadow: 0 0 0 2px rgba(0,0,0,.35), inset 0 0 0 2px rgba(0,0,0,.35); }
+  #mira::before, #mira::after { content: ''; position: absolute; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
+  #mira::before { left: 50%; top: -12px; bottom: -12px; width: 2px; margin-left: -1px; }
+  #mira::after { top: 50%; left: -12px; right: -12px; height: 2px; margin-top: -1px; }
+  #mira.ok { border-color: #4ade80; }
+  #mira.pop { animation: pop .35s ease-out; }
+  @keyframes pop { 50% { transform: scale(1.6); } }
+  #miraTxt { position: fixed; left: 50%; top: calc(50% + 34px); transform: translateX(-50%); z-index: 5; pointer-events: none;
+    background: rgba(15,23,42,.8); color: #fff; font-weight: 800; font-size: 14px; padding: 5px 11px; border-radius: 99px; white-space: nowrap; }
+  #miraTxt small { font-weight: 600; opacity: .85; }
+
+  /* planta ao vivo no canto */
+  #miniCaixa { position: absolute; right: 12px; top: calc(max(12px, env(safe-area-inset-top)) + 58px); width: min(40vw, 180px);
+    background: rgba(255,255,255,.93); border-radius: 14px; padding: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.3); border: 2px solid #0f172a; pointer-events: auto; }
+  #miniCaixa .mapa-titulo { margin-bottom: 3px; }
+  #mini { width: 100%; aspect-ratio: 1; display: block; border-radius: 8px; background: #f8fafc; }
+  #volta { position: absolute; left: 12px; top: calc(max(12px, env(safe-area-inset-top)) + 58px); width: 64px; height: 64px; pointer-events: none; }
+  #volta span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; color: #fff; text-shadow: 0 1px 3px #000; flex-direction: column; line-height: 1; }
+  #volta span small { font-size: 9px; font-weight: 700; }
+
+  #barra { position: absolute; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); background: var(--vidro);
+    border-radius: 18px; padding: 12px 14px; box-shadow: 0 -4px 24px rgba(0,0,0,.3); max-width: 560px; margin: 0 auto; pointer-events: auto; }
+  #barraTxt { font-size: 14.5px; line-height: 1.4; }
+  .acoes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+  .acoes button { font: inherit; font-size: 13px; font-weight: 800; padding: 9px 2px; border-radius: 12px; border: 2px solid #0f172a; background: #fff; }
+  .acoes button:disabled { opacity: .35; }
+  .acoes .principal { grid-column: span 2; background: #16a34a; border-color: #16a34a; color: #fff; font-size: 16px; }
+  .acoes .fim { grid-column: span 2; background: #0f172a; color: #fff; }
+  .acoes .fim.pronto { background: #16a34a; border-color: #16a34a; animation: pulsar 1.2s ease-in-out infinite; }
+  @keyframes pulsar { 50% { box-shadow: 0 0 0 6px rgba(22,163,74,.35); } }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chips button { font: inherit; font-size: 14px; font-weight: 800; padding: 8px 12px; border-radius: 99px; border: 2px solid #0f172a; background: #fff; }
+  .chips button.vai { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .chips button.sec { border-color: #94a3b8; color: #475569; font-size: 13px; }
+  .sugestao { margin-top: 8px; background: #fef9c3; border-radius: 10px; padding: 7px 9px; font-size: 13.5px; display: flex; align-items: center; gap: 6px; }
+  .sugestao span { flex: 1; }
+  .sugestao button { font: inherit; font-weight: 800; font-size: 12px; border-radius: 8px; border: 1.5px solid #0f172a; background: #fff; padding: 4px 8px; }
+
+  /* planta completa */
+  #planta { position: fixed; inset: 0; z-index: 60; background: #f1f5f9; display: flex; flex-direction: column; padding: max(10px, env(safe-area-inset-top)) 12px max(10px, env(safe-area-inset-bottom)); }
+  .planta-cabeca { display: flex; align-items: center; gap: 8px; }
+  .planta-cabeca h2 { margin: 0; font-size: 20px; flex: 1; }
+  .abas2 { display: flex; gap: 6px; margin: 8px 0; }
+  .abas2 button { flex: 1; font: inherit; font-weight: 800; font-size: 14px; padding: 8px; border-radius: 10px; border: 2px solid #0f172a; background: #fff; }
+  .abas2 button.ativo { background: #0f172a; color: #fff; }
+  #palco { flex: 1; min-height: 0; position: relative; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+  #palco canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #resumo { font-size: 13.5px; color: #334155; margin: 8px 2px; line-height: 1.5; max-height: 22vh; overflow-y: auto; }
+  #resumo b { color: #0f172a; }
+  .planta-rodape { display: flex; gap: 6px; }
+  .planta-rodape button { flex: 1; font: inherit; font-weight: 800; font-size: 14px; padding: 11px 4px; border-radius: 12px; border: 0; background: #0f172a; color: #fff; }
+  .planta-rodape .verde { background: #16a34a; }
+  .planta-rodape .claro { background: #e2e8f0; color: #0f172a; }
+  .dica3d { position: absolute; left: 8px; bottom: 6px; font-size: 11px; color: #64748b; pointer-events: none; }
+  .capa-acoes .btn-grande { margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<section id="capa">
+  <div class="capa-conteudo">
+    <div class="logo">🗺️</div>
+    <h1>Mapear a casa</h1>
+    <p class="sub">Planta baixa em Realidade Aumentada <span class="exp">SEM PLACA</span></p>
+    <p class="desc">Fique no <b>meio do cômodo</b> e dê uma <b>volta de 360°</b> mirando os <b>cantos do chão</b>, as <b>portas</b> e as <b>janelas</b>.
+      O app mede as distâncias pela <b>inclinação do celular</b> e desenha a planta na hora. Passe pela porta para o próximo cômodo e ele <b>emenda a planta da casa</b> sozinho.</p>
+    <div class="altura">Altura do celular:
+      <button id="altMenos">−</button><b id="altTxt">1,40 m</b><button id="altMais">+</button></div>
+    <p class="nota">Celular em pé, na altura do peito. Pessoa de 1,70 m ≈ 1,40 m. É a medida que dá a escala da planta.</p>
+    <div class="capa-acoes">
+      <button id="btnComecar" class="btn-grande">📷 Começar</button>
+      <button id="btnVerSalva" class="btn-grande btn-sec" hidden>🗺️ Ver a planta salva</button>
+      <button id="btnNova" class="btn-grande btn-sec" hidden>🗑️ Começar outra casa</button>
+    </div>
+    <p id="avisoHttps" class="aviso" hidden>⚠️ A câmera só funciona em endereço <b>https://</b>.</p>
+    <div class="links"><a href="index.html">← Início</a> &nbsp;·&nbsp; <a href="livre.html">🪄 Decorar</a> &nbsp;·&nbsp; <a href="explicacao.html#mapa">🧠 Como funciona</a></div>
+  </div>
+</section>
+
+<div id="carregando" hidden><div class="spinner"></div><p>Abrindo a câmera…</p></div>
+
+<video id="video" playsinline muted autoplay></video>
+<canvas id="gl"></canvas>
+
+<div id="hud" hidden>
+  <div id="topo">
+    <div id="status" class="procurando"><span class="pulso"></span><span id="statusTxt">Mapeando…</span></div>
+    <button id="btnPlanta" class="btn-icone" title="Ver a planta">🗺️</button>
+    <button id="btnRefazer" class="btn-icone" title="Refazer este cômodo">🔄</button>
+  </div>
+  <div id="volta"><svg viewBox="0 0 64 64" width="64" height="64"><circle cx="32" cy="32" r="27" fill="rgba(15,23,42,.55)" stroke="rgba(255,255,255,.25)" stroke-width="6"/>
+    <circle id="voltaArco" cx="32" cy="32" r="27" fill="none" stroke="#4ade80" stroke-width="6" stroke-linecap="round" transform="rotate(-90 32 32)" stroke-dasharray="0 170"/></svg>
+    <span><b id="voltaTxt">0%</b><small>da volta</small></span></div>
+  <div id="miniCaixa"><div class="mapa-titulo"><span>🗺️ PLANTA</span><span id="miniArea"></span></div><canvas id="mini"></canvas></div>
+  <div id="mira"></div>
+  <div id="miraTxt">incline o celular para o chão</div>
+  <div id="aviso" hidden></div>
+  <div id="barra"><div id="barraTxt"></div><div id="barraAcoes"></div></div>
+</div>
+
+<div id="planta" hidden>
+  <div class="planta-cabeca"><h2>🏠 Planta da casa</h2><button id="btnFecharPlanta" class="mini-btn" style="font-size:14px;padding:6px 12px">✕</button></div>
+  <div class="abas2"><button id="aba2d" class="ativo">🗺️ Planta 2D</button><button id="aba3d">🧊 Maquete 3D</button></div>
+  <div id="palco"><canvas id="planta2d"></canvas><canvas id="maquete" hidden></canvas><span id="dica3d" class="dica3d" hidden>arraste para girar · pinça para zoom</span></div>
+  <div id="resumo"></div>
+  <div class="planta-rodape"><button id="btnCompartilhar" class="verde">📤 Compartilhar</button><button id="btnContinuar" class="claro">📷 Continuar mapeando</button></div>
+</div>
+
+<script type="importmap">{ "imports": { "three": "./lib/three.module.min.js" } }</script>
+<script type="module" src="js/mapear.js"></script>
+</body>
+</html>
