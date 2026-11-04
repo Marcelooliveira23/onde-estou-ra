@@ -44,9 +44,11 @@ se o sofá cabe, se a planta combina, em que altura fica o quadro. Evita compras
 4. Viu uma porta, janela ou passagem? Mire a **base** dela no chão e toque **🚪 / 🪟 / ↔️**. Errou? **↩️ Voltar**.
 5. Volta completa (anel em 100%) → **✅ Concluir**: o app esquadreja as paredes, encaixa portas e janelas e pode sugerir janelas pela **claridade** 💡.
 6. Toque em **➡️ Porta 1 · Sala**, passe pela porta, escolha o novo cômodo, pare no meio, **mire a soleira da porta por onde entrou** e toque **🚪 Entrei por esta porta**. Repita o passo 3.
-7. **🗺️** abre a planta: **2D com medidas**, **🧊 maquete 3D** (gire com o dedo) e **📤 Compartilhar** (imagem PNG). A planta fica salva no celular.
+7. **📐 Altura do teto** (opcional, depois do ✅): levante o celular, mire a linha onde a parede encontra o teto e toque **📐 Medir aqui** (altura = h + distância da parede × tan α).
+8. **🗺️** abre a planta: **2D com medidas**, **🧊 maquete 3D** (gire com o dedo), **🧮 Materiais** (piso, rodapé, tinta) e **📤 Compartilhar** (imagem PNG). A planta fica salva no celular.
+9. **📏 Calibrar:** na planta 2D, **toque numa parede** e digite a medida da trena. A casa inteira é corrigida na mesma proporção (e a altura do celular também).
 
-> **Precisão:** depende da altura informada e de mirar bem o canto. Erro típico de 5 a 10 cm por metro. Para conferir, meça uma parede com trena e ajuste a altura.
+> **Precisão:** depende da altura informada e de mirar bem o canto. Erro típico de 5 a 10 cm por metro, que some ao calibrar com a trena (passo 9). A mira usa a **média dos últimos 0,35 s** para tirar a tremida da mão.
 
 > **Sobre a escala:** sem placa, a câmera sozinha não sabe medidas absolutas. O app supõe o celular a ~1,3 m do chão (pessoa em pé).
 > Se o objeto parecer grande ou pequeno demais, ajuste com − / +. No modo **com placa** a escala é exata (a placa tem 17 cm).
@@ -151,7 +153,7 @@ No mesmo endereço, `http://localhost:8080/index.html` usa a **webcam** do PC de
 | Minimapa 3D estilo game | `js/minimapa3d.js` | segunda cena three.js, câmera em 3ª pessoa |
 | Planta, rotas e direção | `js/casa.js` | busca em largura pelas portas; **produto escalar** com os vetores "direita" e "frente" de quem olha a placa |
 | Interface, voz, chegada | `js/app.js` | HTML/SVG, `speechSynthesis` |
-| Mapear a casa | `mapear.html`, `js/mapear.js` | **giroscópio** + **trigonometria** (d = h ÷ tan θ); esquadrejamento por retas; emenda dos cômodos pela porta em comum (rotação + translação); claridade para sugerir janelas; planta em Canvas 2D e maquete em three.js |
+| Mapear a casa | `mapear.html`, `js/mapear.js` | **giroscópio** + **trigonometria** (d = h ÷ tan θ); esquadrejamento por retas; emenda dos cômodos pela porta em comum (rotação + translação); claridade para sugerir janelas; pé-direito (h + s·tan α); calibração por escala; lista de materiais; planta em Canvas 2D e maquete em three.js |
 | Decorar sem placa | `livre.html`, `js/livre.js` | **SLAM** (AlvaAR): pose da câmera a cada quadro + ajuste de plano; o toque vira um raio que cruza o plano |
 | Modo Decorar (placa) | `js/decor.js`, `js/moveis.js` | o toque vira um **raio** (Raycaster) que cruza o **plano da parede** definido pela placa; objetos 3D feitos em código, em metros |
 | AR nativo do iPhone | `modelos/*.usdz` | **AR Quick Look** do iOS (ARKit detecta chão e paredes), arquivos USDZ gerados dos mesmos modelos |

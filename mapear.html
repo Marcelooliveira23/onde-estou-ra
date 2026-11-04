@@ -65,7 +65,7 @@
   .planta-cabeca { display: flex; align-items: center; gap: 8px; }
   .planta-cabeca h2 { margin: 0; font-size: 20px; flex: 1; }
   .abas2 { display: flex; gap: 6px; margin: 8px 0; }
-  .abas2 button { flex: 1; font: inherit; font-weight: 800; font-size: 14px; padding: 8px; border-radius: 10px; border: 2px solid #0f172a; background: #fff; }
+  .abas2 button { flex: 1; font: inherit; font-weight: 800; font-size: 13.5px; padding: 8px 2px; white-space: nowrap; border-radius: 10px; border: 2px solid #0f172a; background: #fff; }
   .abas2 button.ativo { background: #0f172a; color: #fff; }
   #palco { flex: 1; min-height: 0; position: relative; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.12); }
   #palco canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
@@ -75,6 +75,18 @@
   .planta-rodape button { flex: 1; font: inherit; font-weight: 800; font-size: 14px; padding: 11px 4px; border-radius: 12px; border: 0; background: #0f172a; color: #fff; }
   .planta-rodape .verde { background: #16a34a; }
   .planta-rodape .claro { background: #e2e8f0; color: #0f172a; }
+  #materiais { position: absolute; inset: 0; overflow-y: auto; padding: 12px; font-size: 13.5px; color: #334155; }
+  #materiais h3 { margin: 0 0 8px; font-size: 17px; color: #0f172a; }
+  #materiais table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  #materiais th { text-align: right; font-size: 12px; color: #475569; padding: 4px 3px; border-bottom: 2px solid #0f172a; line-height: 1.2; }
+  #materiais th:first-child, #materiais td:first-child { text-align: left; }
+  #materiais td { text-align: right; padding: 6px 3px; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #0f172a; }
+  #materiais td small { font-weight: 500; color: #64748b; }
+  #materiais td i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; border: 1px solid #0f172a; }
+  #materiais tr.total td { border-top: 2px solid #0f172a; border-bottom: 0; font-weight: 900; }
+  #materiais .compra { margin: 12px 0 8px; background: #dcfce7; border-radius: 10px; padding: 9px 11px; color: #14532d; }
+  #materiais .como { font-size: 12px; color: #64748b; line-height: 1.45; margin: 0; }
+  .nota-planta { background: #dcfce7; color: #14532d; border-radius: 10px; padding: 6px 9px; margin-bottom: 6px; font-weight: 700; }
   .dica3d { position: absolute; left: 8px; bottom: 6px; font-size: 11px; color: #64748b; pointer-events: none; }
   .capa-acoes .btn-grande { margin-top: 10px; }
 </style>
@@ -124,8 +136,8 @@
 
 <div id="planta" hidden>
   <div class="planta-cabeca"><h2>🏠 Planta da casa</h2><button id="btnFecharPlanta" class="mini-btn" style="font-size:14px;padding:6px 12px">✕</button></div>
-  <div class="abas2"><button id="aba2d" class="ativo">🗺️ Planta 2D</button><button id="aba3d">🧊 Maquete 3D</button></div>
-  <div id="palco"><canvas id="planta2d"></canvas><canvas id="maquete" hidden></canvas><span id="dica3d" class="dica3d" hidden>arraste para girar · pinça para zoom</span></div>
+  <div class="abas2"><button id="aba2d" class="ativo">🗺️ Planta</button><button id="aba3d">🧊 Maquete</button><button id="abamat">🧮 Materiais</button></div>
+  <div id="palco"><canvas id="planta2d"></canvas><canvas id="maquete" hidden></canvas><div id="materiais" hidden></div><span id="dica3d" class="dica3d">👆 toque numa parede para ajustar com a trena</span></div>
   <div id="resumo"></div>
   <div class="planta-rodape"><button id="btnCompartilhar" class="verde">📤 Compartilhar</button><button id="btnContinuar" class="claro">📷 Continuar mapeando</button></div>
 </div>

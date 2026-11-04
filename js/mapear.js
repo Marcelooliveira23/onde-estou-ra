@@ -14,6 +14,8 @@
  *   4. escolha a porta por onde vai sair. No próximo cômodo, mire a porta por onde entrou:
  *      a porta é a mesma nos dois cômodos, então o novo cômodo é EMENDADO na planta (posição e giro).
  * A planta aparece AO VIVO no canto da tela e, no fim, vira planta 2D com medidas e maquete 3D.
+ * Extras: 📐 altura do teto (olhando PARA CIMA: altura = h + d·tan α), 📏 calibração com a trena
+ * (toque numa parede da planta) e 🧮 lista de materiais (piso, rodapé e tinta).
  * No PC (sem giroscópio): arraste a tela para olhar em volta. Testes: window.MAPA.
  */
 import * as THREE from 'three';
@@ -31,6 +33,7 @@ const COR_AB = { porta: '#f97316', janela: '#0ea5e9', passagem: '#a855f7' };
 const CORES = ['#fde68a', '#bfdbfe', '#bbf7d0', '#fbcfe8', '#ddd6fe', '#fed7aa', '#a5f3fc', '#e9d5ff'];
 const NOMES = ['Sala', 'Cozinha', 'Quarto', 'Banheiro', 'Corredor', 'Escritório', 'Lavanderia', 'Varanda'];
 const PE_DIREITO = 2.6, ALT_PORTA = 2.1, PEITORIL = 1.0, ALT_JANELA = 2.1, ESP = 0.1;
+const RENDE_TINTA = 10;               // m² por litro, por demão (tinta acrílica, estimativa)
 const SESSAO = Math.random().toString(36).slice(2, 8);
 const d2r = Math.PI / 180, r2d = 180 / Math.PI;
 const fmt = (v, c = 2) => v.toFixed(c).replace('.', ',');
@@ -49,8 +52,9 @@ const novoId = () => Math.random().toString(36).slice(2, 9);
 const estado = {
   etapa: 'capa', atual: null, ligacao: null, mira: null, dir: new THREE.Vector3(0, 0, -1),
   bins: new Array(36).fill(false), luz: new Array(36).fill(0), pilha: [], voltaOk: false,
-  pc: false, yaw: 0, pitch: -30, giro: 0, sujo: true,
+  pc: false, yaw: 0, pitch: -30, giro: 0, sujo: true, hist: [],
 };
+const peDe = cm => cm.pe || casa.pe || PE_DIREITO; // pé-direito medido (📐) ou o padrão
 
 // ---------- geometria 2D da planta (x, z em metros) ----------
 const sub = (a, b) => ({ x: a.x - b.x, z: a.z - b.z });
@@ -203,8 +207,8 @@ function montarAR() { // o que já foi marcado aparece "desenhado" no cômodo re
   if (!cm.fechado) { cm.aberturas.forEach(a => grupoAR.add(pino(a.p, COR_AB[a.tipo], 0.25))); return; }
   for (let i = 0; i < n; i++) { // paredes virtuais translúcidas sobre as paredes reais
     const w = parede(cm, i);
-    const pl = new THREE.Mesh(new THREE.PlaneGeometry(w.L, PE_DIREITO), mat('#ffffff', 0.13));
-    pl.position.set((w.a.x + w.b.x) / 2, PE_DIREITO / 2, (w.a.z + w.b.z) / 2); pl.rotation.y = -Math.atan2(w.u.z, w.u.x);
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(w.L, peDe(cm)), mat('#ffffff', 0.13));
+    pl.position.set((w.a.x + w.b.x) / 2, peDe(cm) / 2, (w.a.z + w.b.z) / 2); pl.rotation.y = -Math.atan2(w.u.z, w.u.x);
     grupoAR.add(pl);
   }
   for (const a of cm.aberturas) { // molduras coloridas das portas e janelas
@@ -267,6 +271,7 @@ let tMini = 0, tLuz = 0;
 function quadro(t) {
   requestAnimationFrame(quadro);
   atualizarCamera(); calcularMira();
+  if (estado.mira) { const h = estado.hist; h.push({ x: estado.mira.x, z: estado.mira.z, t }); if (h.length > 40) h.shift(); }
   if (estado.etapa === 'cantos') registrarVolta(t);
   if (estado.sujo) { montarAR(); estado.sujo = false; }
   atualizarRetic();
@@ -296,6 +301,11 @@ function registrarVolta(t) { // anel de 360° + claridade em cada direção (par
 const volta = () => estado.bins.filter(Boolean).length / 36;
 function textoMira() {
   const m = estado.mira, cm = estado.atual, el = $('miraTxt');
+  if (estado.etapa === 'teto') {
+    const r = alturaTeto(); $('mira').classList.toggle('ok', !!r);
+    el.innerHTML = r ? `📐 teto a ${fmt(r.pe)} m <small>· parede a ${fmt(r.s)} m</small>` : 'levante o celular: mire onde a parede encontra o teto';
+    return;
+  }
   $('mira').classList.toggle('ok', !!m);
   if (!m) { el.innerHTML = 'incline o celular para o chão'; return; }
   let t = `📏 ${fmt(m.d)} m`;
@@ -311,6 +321,47 @@ function aviso(html, cor) {
 }
 function pop() { const m = $('mira'); m.classList.remove('pop'); void m.offsetWidth; m.classList.add('pop'); }
 function sujar() { estado.sujo = true; }
+// Mira estável: média das miras dos últimos 0,35 s que estão perto da atual (tira a tremida da mão)
+function miraEstavel() {
+  const m = estado.mira; if (!m) return null;
+  const agora = performance.now(), ok = estado.hist.filter(p => agora - p.t < 350 && dist(p, m) < 0.15);
+  if (ok.length < 2) return m;
+  const s = ok.reduce((a, p) => add(a, p), { x: 0, z: 0 }), r = mul(s, 1 / ok.length);
+  return { x: r.x, z: r.z, d: dist(r, origemAtual()) };
+}
+// Altura do teto: a parede está a s metros (pela planta já medida); olhando PARA CIMA num ângulo α,
+// a linha parede/teto está a h + s·tan α do chão. É a mesma trigonometria da medida do chão, invertida.
+function alturaTeto() {
+  const d = estado.dir, cm = estado.atual; if (!cm || !cm.fechado || d.y < 0.03) return null;
+  const hz = Math.hypot(d.x, d.z); if (hz < 0.1) return null;
+  const hit = raioNaPlanta(cm.cantos, cm.origem, { x: d.x / hz, z: d.z / hz }); if (!hit) return null;
+  const pe = casa.h + hit.s * d.y / hz;
+  return pe > 1.8 && pe < 6 ? { pe, s: hit.s } : null;
+}
+function medirTeto() {
+  const r = alturaTeto(), cm = estado.atual;
+  if (!r) return aviso('Mire a <b>linha onde a parede encontra o teto</b>', '#b45309');
+  cm.pe = casa.pe = Math.round(r.pe * 100) / 100;
+  estado.etapa = 'resumo'; pop(); salvar(); sujar(); ui();
+  aviso(`📐 Pé-direito do(a) ${cm.nome}: ${fmt(cm.pe)} m<small>a maquete 3D e os materiais usam esta altura</small>`, '#7c3aed');
+}
+// Calibração: o usuário mede UMA parede com a trena; a casa inteira (e a altura do celular) é corrigida na mesma proporção
+function escalar(k) {
+  const m = p => ({ x: p.x * k, z: p.z * k });
+  for (const c of casa.comodos) { c.cantos = c.cantos.map(m); c.origem = m(c.origem); c.aberturas.forEach(a => { a.p = m(a.p); }); if (c.pe) c.pe *= k; }
+  if (casa.pe) casa.pe *= k;
+  casa.h *= k; casa.calibrado = true; estado.hist = []; salvar(); sujar();
+}
+function calibrar(cm, i) {
+  const L = parede(cm, i).L;
+  const r = prompt(`📏 Parede do(a) ${cm.nome}: o app mediu ${fmt(L)} m.\nQuanto ela mede com a TRENA? (em metros, ex.: 3,85)`, fmt(L));
+  if (r == null || !r.trim()) return;
+  const real = parseFloat(r.replace(',', '.'));
+  if (!(real > 0.3) || real / L > 1.6 || real / L < 0.6) { notaPlanta = '⚠️ Medida não aceita: digite em metros, perto do valor medido (ex.: 3,85).'; return abrirPlanta(); }
+  const k = real / L; escalar(k);
+  notaPlanta = `📏 Calibrada com a trena: tudo foi corrigido em ${k >= 1 ? '+' : ''}${fmt((k - 1) * 100, 1)}% · altura do celular agora ${fmt(casa.h)} m`;
+  abrirPlanta();
+}
 function zerarVolta() { estado.bins.fill(false); estado.luz.fill(0); estado.pilha = []; estado.voltaOk = false; }
 
 function novoComodo(nome) {
@@ -329,7 +380,7 @@ function novoComodo(nome) {
 function abertura(lig) { const c = achar(lig.c); return c && c.aberturas.find(a => a.id === lig.a); }
 
 function entrei() { // mirou a soleira da porta por onde entrou: posiciona o novo cômodo na planta
-  const cm = estado.atual, m = estado.mira; if (!m) return aviso('Mire a <b>soleira da porta</b> no chão', '#b45309');
+  const cm = estado.atual, m = miraEstavel(); if (!m) return aviso('Mire a <b>soleira da porta</b> no chão', '#b45309');
   const lig = estado.ligacao, A = abertura(lig);
   const v = sub(m, cm.origem);
   cm.origem = sub(A.p, v);
@@ -339,12 +390,12 @@ function entrei() { // mirou a soleira da porta por onde entrou: posiciona o nov
   aviso(`🔗 ${cm.nome} ligado à planta! <small>agora gire e marque os cantos</small>`, '#2563eb');
 }
 function marcarCanto() {
-  const m = estado.mira; if (!m) return aviso('Incline o celular para <b>o chão</b>', '#b45309');
+  const m = miraEstavel(); if (!m) return aviso('Incline o celular para <b>o chão</b>', '#b45309');
   if (m.d > 8) return aviso('Longe demais (mais de 8 m). <small>Chegue mais perto do canto</small>', '#b45309');
   estado.atual.cantos.push({ x: m.x, z: m.z }); estado.pilha.push('canto'); pop(); sujar(); ui();
 }
 function marcarAbertura(tipo) {
-  const m = estado.mira; if (!m) return aviso('Mire a <b>base</b> da ' + NOME[tipo].toLowerCase() + ', no chão', '#b45309');
+  const m = miraEstavel(); if (!m) return aviso('Mire a <b>base</b> da ' + NOME[tipo].toLowerCase() + ', no chão', '#b45309');
   estado.atual.aberturas.push({ id: novoId(), tipo, p: { x: m.x, z: m.z }, larg: LARG[tipo] });
   estado.pilha.push('abertura'); pop(); sujar(); ui();
   aviso(`${ICONE[tipo]} ${NOME[tipo]} marcada`, COR_AB[tipo]);
@@ -449,6 +500,9 @@ function executar(a) {
   else if (acao === 'ir') { estado.ligacao = { c: x, a: y }; estado.etapa = 'nome'; ui(); }
   else if (acao === 'separado') { estado.ligacao = null; estado.etapa = 'nome'; ui(); }
   else if (acao === 'planta') abrirPlanta();
+  else if (acao === 'teto') { if (estado.atual && estado.atual.fechado) { estado.etapa = 'teto'; ui(); } }
+  else if (acao === 'medirTeto') medirTeto();
+  else if (acao === 'cancelar') { estado.etapa = 'resumo'; ui(); }
   else if (acao === 'sim' || acao === 'nao') {
     const cm = estado.atual, ab = cm.aberturas.find(b => b.id === x);
     if (ab) { if (acao === 'sim') delete ab.sugerida; else cm.aberturas.splice(cm.aberturas.indexOf(ab), 1); }
@@ -483,17 +537,21 @@ function ui() {
       <button data-a="passagem">↔️ Passagem</button><button data-a="desfazer" ${estado.pilha.length ? '' : 'disabled'}>↩️ Voltar</button>
       <button class="fim ${n >= 3 && v >= 0.9 ? 'pronto' : ''}" data-a="concluir" ${n < 3 ? 'disabled' : ''}>✅ Concluir</button></div>`;
     st = `📍 ${cm.nome} · ${n} canto${n === 1 ? '' : 's'}`;
+  } else if (e === 'teto') {
+    txt = `📐 <b>Altura do teto</b> do(a) ${cm.nome}: levante o celular e mire a <b>linha onde a parede encontra o teto</b> (de preferência uma parede livre, sem armário).`;
+    ac = '<div class="acoes"><button class="principal" style="grid-column:span 3" data-a="medirTeto">📐 Medir aqui</button><button data-a="cancelar">✕</button></div>';
+    st = `📐 ${cm.nome}: altura do teto`;
   } else if (e === 'resumo') {
     const L = livres();
     if (cm) {
       const c = t => cm.aberturas.filter(a => a.tipo === t && !a.sugerida).length;
-      txt = `✅ <b>${cm.nome}</b>: ${fmt(area(cm.cantos), 1)} m² · ${cm.cantos.length} paredes · ${c('porta') + c('passagem')} porta/passagem · ${c('janela')} janela`;
+      txt = `✅ <b>${cm.nome}</b>: ${fmt(area(cm.cantos), 1)} m² · ${cm.cantos.length} paredes · ${c('porta') + c('passagem')} porta/passagem · ${c('janela')} janela${cm.pe ? ` · teto ${fmt(cm.pe)} m` : ''}`;
       for (const a of cm.aberturas.filter(b => b.sugerida))
         txt += `<div class="sugestao"><span>💡 Pela <b>claridade</b>, parece ter uma <b>janela</b> ali (tracejada na planta).</span><button data-a="sim:${a.id}">✅ é</button><button data-a="nao:${a.id}">❌</button></div>`;
     } else txt = `🏠 Você tem <b>${casa.comodos.length} cômodo(s)</b> salvos (${fmt(areaTotal(), 1)} m²).`;
     txt += L.length ? '<br><b>Para onde agora?</b> Escolha a porta e passe por ela:' : '<br>Marque uma porta ou passagem para emendar o próximo cômodo.';
     ac = `<div class="chips">${L.map(l => `<button class="vai" data-a="ir:${l.c.id}:${l.a.id}">➡️ ${l.rot}</button>`).join('')}
-      <button class="sec" data-a="planta">🗺️ Ver a planta</button><button class="sec" data-a="separado">➕ Cômodo separado</button></div>`;
+      ${cm && cm.fechado ? `<button class="sec" data-a="teto">📐 ${cm.pe ? 'Medir o teto de novo' : 'Altura do teto'}</button>` : ''}<button class="sec" data-a="planta">🗺️ Ver a planta</button><button class="sec" data-a="separado">➕ Cômodo separado</button></div>`;
     st = `🏠 ${casa.comodos.length} cômodo(s) · ${fmt(areaTotal(), 1)} m²`;
   }
   $('barraTxt').innerHTML = txt; $('barraAcoes').innerHTML = ac; $('statusTxt').textContent = st;
@@ -557,9 +615,11 @@ function desenharPlanta(g, W, H, v, op = {}) {
   if (op.cotas) for (const cm of fechados) for (let i = 0; i < cm.cantos.length; i++) { // medidas das paredes
     const w = parede(cm, i), m = mul(add(w.a, w.b), 0.5), fs = 11 * k;
     g.font = `700 ${fs}px -apple-system, Segoe UI, Arial`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    const meia = g.measureText(`${fmt(w.L)} m`).width / 2, off = 9 * k + Math.abs(w.n.x) * meia + Math.abs(w.n.z) * fs * 0.6;
-    const px = X(m) + w.n.x * off, py = Y(m) + w.n.z * off; // por dentro do cômodo
-    g.lineWidth = 3 * k; g.strokeStyle = '#fff'; g.strokeText(`${fmt(w.L)} m`, px, py); g.fillStyle = '#b91c1c'; g.fillText(`${fmt(w.L)} m`, px, py);
+    const off = 9 * k + fs * 0.6, px = X(m) + w.n.x * off, py = Y(m) + w.n.z * off; // por dentro do cômodo, ao longo da parede
+    let ang = Math.atan2(w.u.z, w.u.x); if (ang > Math.PI / 2 + 0.01) ang -= Math.PI; else if (ang < -Math.PI / 2 + 0.01) ang += Math.PI; // texto sempre de pé
+    g.save(); g.translate(px, py); g.rotate(ang);
+    g.lineWidth = 3 * k; g.strokeStyle = '#fff'; g.strokeText(`${fmt(w.L)} m`, 0, 0); g.fillStyle = '#b91c1c'; g.fillText(`${fmt(w.L)} m`, 0, 0);
+    g.restore();
   }
   g.restore();
 }
@@ -602,30 +662,73 @@ function desenharMini() {
 }
 
 // ---------- planta completa: 2D com medidas e maquete 3D ----------
-let aba = '2d';
+let aba = '2d', notaPlanta = '';
 function abrirPlanta() {
   $('planta').hidden = false; trocarAba(aba);
   const f = casa.comodos.filter(c => c.fechado);
-  $('resumo').innerHTML = f.length
-    ? `<b>${f.length} cômodo(s) · ${fmt(areaTotal(), 1)} m² no total</b><br>` + f.map(c => {
+  const nota = notaPlanta ? `<div class="nota-planta">${notaPlanta}</div>` : ''; notaPlanta = '';
+  $('resumo').innerHTML = nota + (f.length
+    ? `<b>${f.length} cômodo(s) · ${fmt(areaTotal(), 1)} m² no total</b>${casa.calibrado ? ' · 📏 calibrada com trena' : ''}<br>` + f.map(c => {
       const n = t => c.aberturas.filter(a => a.tipo === t && !a.entrada).length;
       let per = 0; for (let i = 0; i < c.cantos.length; i++) per += parede(c, i).L;
-      return `<b>${c.nome}</b>: ${fmt(area(c.cantos), 1)} m² · perímetro ${fmt(per, 1)} m · ${n('porta')} 🚪 ${n('janela')} 🪟 ${n('passagem')} ↔️`;
+      return `<b>${c.nome}</b>: ${fmt(area(c.cantos), 1)} m² · perímetro ${fmt(per, 1)} m · teto ${fmt(peDe(c))} m${c.pe ? ' 📐' : casa.pe ? ' (do último medido)' : ' (padrão)'} · ${n('porta')} 🚪 ${n('janela')} 🪟 ${n('passagem')} ↔️`;
     }).join('<br>')
-    : 'Nenhum cômodo concluído ainda. Marque os cantos e toque em ✅ Concluir.';
+    : 'Nenhum cômodo concluído ainda. Marque os cantos e toque em ✅ Concluir.');
+}
+// 🧮 Lista de materiais: o que comprar para reformar, calculado da planta
+function materiais() {
+  const linhas = casa.comodos.filter(c => c.fechado).map(c => {
+    const pe = peDe(c); let per = 0; for (let i = 0; i < c.cantos.length; i++) per += parede(c, i).L;
+    let vaos = 0, vaoChao = 0;
+    for (const a of c.aberturas) {
+      if (a.tipo === 'janela') { if (!a.sugerida) vaos += a.larg * (ALT_JANELA - PEITORIL); }
+      else { vaos += a.larg * Math.min(ALT_PORTA, pe); vaoChao += a.larg; }
+    }
+    const A = area(c.cantos), paredes = Math.max(0, per * pe - vaos);
+    return { nome: c.nome, cor: c.cor, piso: A * 1.1, rodape: Math.max(0, per - vaoChao), paredes, teto: A, tinta: (paredes + A) * 2 / RENDE_TINTA, pe, medido: !!c.pe };
+  });
+  const T = k => linhas.reduce((s, l) => s + l[k], 0);
+  return { linhas, piso: T('piso'), rodape: T('rodape'), paredes: T('paredes'), teto: T('teto'), tinta: T('tinta') };
+}
+function desenharMateriais() {
+  const M = materiais(), el = $('materiais');
+  if (!M.linhas.length) { el.innerHTML = '<p>Conclua um cômodo para ver a lista de materiais.</p>'; return; }
+  const galoes = Math.ceil(M.tinta / 3.6);
+  el.innerHTML = `<h3>🧮 Lista de materiais (estimativa)</h3>
+    <table><tr><th>Cômodo</th><th>Piso<br><small>m² +10%</small></th><th>Rodapé<br><small>m</small></th><th>Paredes<br><small>m²</small></th><th>Tinta<br><small>litros</small></th></tr>
+    ${M.linhas.map(l => `<tr><td><i style="background:${l.cor}"></i>${l.nome}<br><small>teto ${fmt(l.pe)} m${l.medido ? ' 📐' : ''}</small></td><td>${fmt(l.piso, 1)}</td><td>${fmt(l.rodape, 1)}</td><td>${fmt(l.paredes, 1)}</td><td>${fmt(l.tinta, 1)}</td></tr>`).join('')}
+    <tr class="total"><td>Total</td><td>${fmt(M.piso, 1)}</td><td>${fmt(M.rodape, 1)}</td><td>${fmt(M.paredes, 1)}</td><td>${fmt(M.tinta, 1)}</td></tr></table>
+    <div class="compra">🛒 <b>Comprar:</b> ${fmt(M.piso, 1)} m² de piso · ${Math.ceil(M.rodape)} m de rodapé · <b>${galoes} galão(ões) de 3,6 L</b> de tinta</div>
+    <p class="como"><b>Como o app calcula:</b> piso = área + 10% de perda nos cortes · rodapé = perímetro − portas e passagens ·
+    paredes = perímetro × pé-direito − vãos de portas e janelas · tinta = (paredes + teto) × 2 demãos ÷ ${RENDE_TINTA} m²/L.
+    ${M.linhas.some(l => !l.medido) ? `Cômodos sem 📐 usam ${casa.pe ? `o último teto medido (${fmt(casa.pe)} m)` : `o pé-direito padrão de ${fmt(PE_DIREITO)} m`}: toque em 📐 Altura do teto em cada cômodo para ficar exato.` : ''}</p>`;
 }
 function trocarAba(qual) {
   aba = qual;
-  $('aba2d').classList.toggle('ativo', qual === '2d'); $('aba3d').classList.toggle('ativo', qual === '3d');
-  $('planta2d').hidden = qual !== '2d'; $('maquete').hidden = qual !== '3d'; $('dica3d').hidden = qual !== '3d';
-  if (qual === '2d') desenhar2d(); else abrirMaquete();
+  for (const q of ['2d', '3d', 'mat']) $('aba' + q).classList.toggle('ativo', qual === q);
+  $('planta2d').hidden = qual !== '2d'; $('maquete').hidden = qual !== '3d'; $('materiais').hidden = qual !== 'mat';
+  $('dica3d').hidden = qual === 'mat';
+  $('dica3d').textContent = qual === '3d' ? 'arraste para girar · pinça para zoom' : '👆 toque numa parede para ajustar com a trena';
+  if (qual !== '3d') parar3d = true;
+  if (qual === '2d') desenhar2d(); else if (qual === '3d') abrirMaquete(); else desenharMateriais();
 }
 function desenhar2d() {
   const cv = $('planta2d'), W = cv.clientWidth * dpr, H = cv.clientHeight * dpr; cv.width = W; cv.height = H;
-  desenharPlanta(cv.getContext('2d'), W, H, enquadrar(W, H, false, 40 * dpr), { k: dpr, cotas: true, voce: estado.etapa !== 'capa', fundo: '#ffffff' });
+  vista2d = enquadrar(W, H, false, 40 * dpr); vista2d.W = W; vista2d.H = H;
+  desenharPlanta(cv.getContext('2d'), W, H, vista2d, { k: dpr, cotas: true, voce: estado.etapa !== 'capa', fundo: '#ffffff' });
 }
+let vista2d = null;
+$('planta2d').addEventListener('click', e => { // toque numa parede → calibrar com a trena
+  const v = vista2d; if (!v) return;
+  const r = $('planta2d').getBoundingClientRect(), px = (e.clientX - r.left) * dpr, py = (e.clientY - r.top) * dpr;
+  const p = { x: (px - v.W / 2) / v.esc + v.cx, z: (py - v.H / 2) / v.esc + v.cz };
+  let melhor = null;
+  for (const c of casa.comodos.filter(c => c.fechado)) { const q = naParede(c.cantos, p); if (!melhor || q.d < melhor.d) melhor = { c, i: q.i, d: q.d }; }
+  if (melhor && melhor.d < Math.max(0.3, 28 * dpr / v.esc)) calibrar(melhor.c, melhor.i);
+});
 $('aba2d').addEventListener('click', () => trocarAba('2d'));
 $('aba3d').addEventListener('click', () => trocarAba('3d'));
+$('abamat').addEventListener('click', () => trocarAba('mat'));
 $('btnFecharPlanta').addEventListener('click', fecharPlanta);
 $('btnContinuar').addEventListener('click', () => { if (estado.etapa === 'capa') iniciar(); else fecharPlanta(); });
 function fecharPlanta() { $('planta').hidden = true; parar3d = true; if (estado.etapa === 'capa') $('capa').hidden = false; }
@@ -667,6 +770,7 @@ function construirMaquete() {
   for (const cm of fechados) {
     const piso = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(cm.cantos.map(p => new THREE.Vector2(p.x, -p.z)))), new THREE.MeshStandardMaterial({ color: cm.cor, roughness: 0.8 }));
     piso.rotation.x = -Math.PI / 2; piso.receiveShadow = true; cena3d.add(piso);
+    const PD = peDe(cm), AJ = Math.min(ALT_JANELA, PD - 0.1), AP = Math.min(ALT_PORTA, PD - 0.1);
     for (let i = 0; i < cm.cantos.length; i++) {
       const w = parede(cm, i), ang = -Math.atan2(w.u.z, w.u.x);
       const bloco = (s0, s1, y0, y1, m = matParede, esp = ESP) => {
@@ -678,9 +782,9 @@ function construirMaquete() {
       const vaos = cm.aberturas.filter(a => a.parede === i).map(a => ({ a, s0: a.t * w.L - a.larg / 2, s1: a.t * w.L + a.larg / 2 })).sort((p, q) => p.s0 - q.s0);
       let s = 0;
       for (const v of vaos) {
-        bloco(s, v.s0, 0, PE_DIREITO);
-        if (v.a.tipo === 'janela') { bloco(v.s0, v.s1, 0, PEITORIL); bloco(v.s0, v.s1, ALT_JANELA, PE_DIREITO); bloco(v.s0, v.s1, PEITORIL, ALT_JANELA, matVidro, 0.03); }
-        else bloco(v.s0, v.s1, ALT_PORTA, PE_DIREITO);
+        bloco(s, v.s0, 0, PD);
+        if (v.a.tipo === 'janela') { bloco(v.s0, v.s1, 0, PEITORIL); bloco(v.s0, v.s1, AJ, PD); bloco(v.s0, v.s1, PEITORIL, AJ, matVidro, 0.03); }
+        else bloco(v.s0, v.s1, AP, PD);
         if (v.a.tipo === 'porta' && !v.a.entrada) { // folha da porta entreaberta
           const dir = add(mul(w.u, Math.cos(1.1)), mul(w.n, Math.sin(1.1))), dob = new THREE.Group(), h0 = add(w.a, mul(w.u, v.s0));
           const folha = new THREE.Mesh(new THREE.BoxGeometry(v.a.larg - 0.03, ALT_PORTA - 0.02, 0.04), matPorta);
@@ -689,7 +793,7 @@ function construirMaquete() {
         }
         s = Math.max(s, v.s1);
       }
-      bloco(s, w.L, 0, PE_DIREITO);
+      bloco(s, w.L, 0, PD);
     }
     const c = centro(cm.cantos), r = rotulo(cm.nome, `${fmt(area(cm.cantos), 1)} m²`); r.position.set(c.x, 1.5, c.z); cena3d.add(r);
   }
@@ -707,8 +811,8 @@ function construirMaquete() {
 }
 
 async function compartilhar() { // imagem da planta com medidas, para mandar ao arquiteto/marceneiro
-  const W = 1400, cv = document.createElement('canvas'); cv.width = W; cv.height = W + 200; const g = cv.getContext('2d');
-  g.fillStyle = '#fff'; g.fillRect(0, 0, W, W + 200);
+  const W = 1400, cv = document.createElement('canvas'); cv.width = W; cv.height = W + 290; const g = cv.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, W, W + 290);
   g.fillStyle = '#0f172a'; g.font = '800 54px -apple-system, Segoe UI, Arial'; g.fillText('🏠 Planta da casa', 50, 86);
   const f = casa.comodos.filter(c => c.fechado);
   g.font = '600 30px -apple-system, Segoe UI, Arial'; g.fillStyle = '#475569';
@@ -717,6 +821,13 @@ async function compartilhar() { // imagem da planta com medidas, para mandar ao 
   const v = enquadrar(W, W, false, 90); desenharPlanta(g, W, W, v, { k: 2.2, cotas: true, fundo: '#ffffff' });
   g.fillStyle = '#0f172a'; g.fillRect(60, W - 50, v.esc, 10); g.font = '700 26px Arial'; g.fillText('1 m', 60 + v.esc + 12, W - 36); // escala gráfica
   g.restore();
+  const M = materiais();
+  if (M.linhas.length) {
+    g.fillStyle = '#f1f5f9'; g.fillRect(0, W + 180, W, 110); g.fillStyle = '#0f172a'; g.font = '700 30px -apple-system, Segoe UI, Arial';
+    g.fillText(`🧮 Piso ${fmt(M.piso, 1)} m² · Rodapé ${Math.ceil(M.rodape)} m · Tinta ${fmt(M.tinta, 1)} L (${Math.ceil(M.tinta / 3.6)} galões)`, 50, W + 228);
+    g.font = '500 24px -apple-system, Segoe UI, Arial'; g.fillStyle = '#64748b';
+    g.fillText(`estimativa · piso +10% · tinta 2 demãos${casa.calibrado ? ' · medidas calibradas com trena' : ''}`, 50, W + 266);
+  }
   const blob = await new Promise(ok => cv.toBlob(ok, 'image/png'));
   const arq = new File([blob], 'planta-da-casa.png', { type: 'image/png' });
   window.ULTIMA_PLANTA = cv.toDataURL('image/png');
@@ -752,7 +863,7 @@ $('gl').addEventListener('pointermove', e => {
 
 // para testes automáticos e demonstração no PC
 window.MAPA = {
-  estado, casa: () => casa, executar, abrirPlanta, trocarAba, compartilhar,
+  estado, casa: () => casa, executar, abrirPlanta, trocarAba, compartilhar, materiais, calibrar: (c, i) => calibrar(casa.comodos[c], i), vista2d: () => vista2d,
   olhar(yaw, pitch) { estado.pc = true; estado.yaw = yaw; estado.pitch = pitch; },
   mirarEm(x, z) { // aponta a mira para o ponto (x, z) do chão
     const o = origemAtual(), dx = x - o.x, dz = z - o.z;

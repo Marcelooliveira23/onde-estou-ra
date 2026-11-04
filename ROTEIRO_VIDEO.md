@@ -45,8 +45,11 @@ Marque 4 cantos, uma **🚪 porta** e uma **🪟 janela**. Mostre a **planta ao 
 Toque **➡️ Porta**, vá para o próximo cômodo, **mire a porta por onde entrou** → marque os cantos → **✅**.
 > "Quando eu passo pela porta, o app **emenda** o próximo cômodo na planta, porque a porta é o mesmo ponto nos dois cômodos."
 
-Toque **🗺️** → **🧊 Maquete 3D** e gire com o dedo.
-> "No fim eu tenho a **planta com as medidas** e uma **maquete 3D** da casa, que posso mandar para o arquiteto ou o marceneiro."
+Toque **📐 Altura do teto**, levante o celular para a linha do teto → **📐 Medir aqui**.
+> "Olhando para cima ele mede o **pé-direito**: altura do celular mais a distância da parede vezes a tangente do ângulo."
+
+Toque **🗺️** → toque numa parede da planta e digite a medida da **trena**. Depois **🧊 Maquete** (gire com o dedo) e **🧮 Materiais**.
+> "Se eu medir **uma** parede com a trena, o app corrige a casa inteira. No fim eu tenho a **planta com as medidas**, uma **maquete 3D** e a **lista do que comprar**: piso, rodapé e quantos galões de tinta. Dá para mandar tudo para o arquiteto ou o pedreiro."
 
 ### 5. Outros modos (opcional, uma frase)
 > "Também tem o modo **com placa**, em que uma imagem na parede serve de âncora e deixa a escala exata, com um localizador da casa. E o botão **AR do iPhone** abre os mesmos objetos na RA nativa do iOS."
@@ -70,6 +73,6 @@ Abra **🧠 Como funciona** (link na tela inicial) e vá descendo pelo diagrama 
 - [ ] Gravado **na tela do iPhone**, com o app rodando de verdade (não o simulador)
 - [ ] **Sua voz** explicando, **sem música**
 - [ ] Mostrou: reconhecer o chão → colocar móvel → andar em volta → parede → quadro → trocar a obra → 📸 foto
-- [ ] Mostrou: 🗺️ mapear 2 cômodos → planta ao vivo → emenda pela porta → maquete 3D
+- [ ] Mostrou: 🗺️ mapear 2 cômodos → planta ao vivo → emenda pela porta → 📐 teto → 📏 trena → maquete 3D → 🧮 materiais
 - [ ] Explicou a **utilidade** e **como foi feito**
 - [ ] YouTube **Não listado** → link no **AVA Univirtus**
