@@ -138,19 +138,22 @@
   </div>
   <div class="passos">
     <div class="passo"><div><b>Volta de 360°</b><p>No meio do cômodo, você gira e mira cada <b>canto do chão</b>. Cada canto vira um ponto (x, z) da planta: direção (giroscópio) + distância (d = h ÷ tan θ). O anel mostra quanto da volta já foi feito.</p></div></div>
+    <div class="passo"><div><b>🤖 Ou a IA acha as paredes sozinha</b><p>Uma <b>rede neural de segmentação</b> (SegFormer, treinada no ADE20K com 150 classes de ambiente) roda <b>no próprio celular</b> (transformers.js + ONNX Runtime, WebGPU ou WebAssembly). A cada 0,3 s ela pinta cada pixel como <b>parede, chão, porta, janela</b>… Em cada coluna da imagem, o ponto onde a parede encontra o chão vira um raio que sai da câmera e cruza o chão (a mesma trigonometria): <b>dezenas de pontos por quadro</b>, sem tocar em nada. Com a volta de 360°, o app procura, em cada lado, a reta onde muitas direções concordam e escolhe a <b>mais distante</b>, porque móvel sempre fica <b>na frente</b> da parede. Saltos na distância viram <b>passagens</b>; colunas com porta ou janela viram <b>portas e janelas</b>.</p></div></div>
     <div class="passo"><div><b>Esquadrejar</b><p>Casas têm cantos de 90°. O app acha a direção principal das paredes e endireita cada uma para 0° ou 90°, recalculando os cantos como cruzamento das retas. Os pequenos erros de mira somem.</p></div></div>
     <div class="passo"><div><b>Portas, janelas e passagens</b><p>Mirando a base delas, cada uma é encaixada na parede mais próxima. Além disso, o app guarda a <b>claridade</b> de cada direção da volta: os pontos bem mais claros que o resto viram uma <b>sugestão de janela</b> 💡, que você confirma.</p></div></div>
     <div class="passo"><div><b>Emendar os cômodos</b><p>Você escolhe a porta e passa por ela. No novo cômodo, mira a mesma porta: como ela é <b>o mesmo ponto nos dois cômodos</b>, o app gira e encaixa o novo cômodo do outro lado daquela parede. A planta da casa vai crescendo, cômodo por cômodo.</p></div></div>
     <div class="passo"><div><b>📐 Altura do teto</b><p>A mesma conta, olhando <b>para cima</b>. A planta já diz a que distância (s) está a parede; mirando a linha parede/teto num ângulo α acima do horizonte, o teto está a <b>h + s · tan α</b>. Exemplo: h = 1,40 m, parede a 1,6 m e α = 37° → 1,40 + 1,6 · 0,754 ≈ <b>2,61 m</b>.</p></div></div>
     <div class="passo"><div><b>📏 Calibrar com a trena</b><p>Toque numa parede da planta e digite quanto ela mede de verdade. Como todas as medidas são proporcionais à altura h, o app multiplica a <b>casa inteira</b> (e a altura do celular) pelo fator trena ÷ medido. Uma medida real corrige todas as outras.</p></div></div>
+    <div class="passo"><div><b>🥽 Mobiliar em Realidade Virtual</b><p>A planta vira uma <b>casa 3D realista</b>: piso de madeira, porcelanato ou mármore (texturas geradas em código), parede na cor escolhida, rodapé, batentes, sol entrando pelas janelas com sombra e modo noite com luminárias. Dá para <b>mobiliar</b> com os mesmos móveis reais do modo Decorar, <b>passear por dentro</b> em primeira pessoa (joystick, giroscópio, colisão com as paredes) e usar <b>óculos VR</b> de papelão (tela dividida, uma imagem para cada olho: estereoscopia).</p></div></div>
     <div class="passo"><div><b>Planta 2D, maquete 3D e 🧮 materiais</b><p>As paredes viram uma planta com medidas e área (m²) e uma <b>maquete 3D</b> com portas e janelas, que dá para girar com o dedo. A aba <b>Materiais</b> calcula o que comprar para reformar: <b>piso</b> (área + 10% de perda), <b>rodapé</b> (perímetro − portas), <b>tinta</b> ((paredes − vãos + teto) × 2 demãos ÷ 10 m²/L). Tudo vai numa imagem para mandar ao arquiteto ou ao pedreiro.</p></div></div>
   </div>
 
-  <h2>Quatro formas de usar</h2>
+  <h2>Cinco formas de usar</h2>
   <div class="modos">
     <div class="cartao modo"><span class="tag" style="background:#14532d;color:#86efac">SEM PLACA</span><b>🪄 Decorar o ambiente</b><p>SLAM no navegador. Reconhece chão e paredes sozinho. Se faltar luz, o <b>⚡ modo rápido</b> usa só o giroscópio.</p></div>
     <div class="cartao modo"><span class="tag" style="background:#1e3a8a;color:#bfdbfe">COM PLACA</span><b>📍 Placa na parede</b><p>Rastreamento de imagem: a placa é a âncora e dá a <b>escala exata</b>. Inclui o localizador da casa, com mapa 3D e rotas.</p></div>
-    <div class="cartao modo"><span class="tag" style="background:#713f12;color:#fde68a">SEM PLACA</span><b>🗺️ Mapear a casa</b><p>Volta de 360° em cada cômodo: mede os cantos pela inclinação do celular e monta a <b>planta da casa</b> (2D com medidas e maquete 3D).</p></div>
+    <div class="cartao modo"><span class="tag" style="background:#713f12;color:#fde68a">SEM PLACA</span><b>🗺️ Mapear a casa</b><p>Volta de 360° em cada cômodo: a <b>IA</b> acha as paredes (ou você mira os cantos) e o app monta a <b>planta da casa</b> (2D com medidas e maquete 3D).</p></div>
+    <div class="cartao modo"><span class="tag" style="background:#4c1d95;color:#ddd6fe">REALIDADE VIRTUAL</span><b>🥽 Casa em VR</b><p>A planta medida vira uma casa 3D para <b>mobiliar, pintar e passear por dentro</b>, até com óculos VR de papelão.</p></div>
     <div class="cartao modo"><span class="tag" style="background:#3b0764;color:#e9d5ff">NATIVO</span><b>📱 AR do iPhone</b><p>Abre o mesmo objeto na RA do próprio iOS (AR Quick Look / ARKit), usando arquivos USDZ gerados pelo projeto.</p></div>
   </div>
 
@@ -160,6 +163,8 @@
       <tr><td>WebAR</td><td>Roda no Safari, sem instalar nada, hospedado no GitHub Pages com HTTPS (exigido para usar a câmera)</td></tr>
       <tr><td>AlvaAR</td><td>SLAM visual compilado para WebAssembly (C++ rodando no navegador)</td></tr>
       <tr><td>Giroscópio</td><td>DeviceOrientation: direção e inclinação do celular. No mapeamento, vira medida pela trigonometria (d = h ÷ tan θ)</td></tr>
+      <tr><td>IA (visão computacional)</td><td>SegFormer-B0 (ADE20K) via transformers.js / ONNX Runtime Web: segmentação semântica no celular, sem enviar imagem para servidor</td></tr>
+      <tr><td>VR</td><td>Primeira pessoa com colisão, giroscópio ("janela mágica") e estereoscopia (StereoEffect) para óculos de papelão</td></tr>
       <tr><td>three.js</td><td>Desenho 3D em WebGL, materiais PBR, raycasting, mapa de ambiente</td></tr>
       <tr><td>MindAR + A-Frame</td><td>Reconhecimento de imagem (modo com placa)</td></tr>
       <tr><td>Modelos 3D</td><td>Objetos reais escaneados por fotogrametria (Poly Haven, CC0)</td></tr>

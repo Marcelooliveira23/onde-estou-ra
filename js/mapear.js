@@ -14,6 +14,8 @@
  *   4. escolha a porta por onde vai sair. No próximo cômodo, mire a porta por onde entrou:
  *      a porta é a mesma nos dois cômodos, então o novo cômodo é EMENDADO na planta (posição e giro).
  * A planta aparece AO VIVO no canto da tela e, no fim, vira planta 2D com medidas e maquete 3D.
+ * 🤖 IA (opcional): uma rede neural de segmentação (SegFormer, ADE20K) roda no celular e acha SOZINHA
+ * a linha onde a parede encontra o chão; com a volta de 360°, os pontos viram as paredes do cômodo.
  * Extras: 📐 altura do teto (olhando PARA CIMA: altura = h + d·tan α), 📏 calibração com a trena
  * (toque numa parede da planta) e 🧮 lista de materiais (piso, rodapé e tinta).
  * No PC (sem giroscópio): arraste a tela para olhar em volta. Testes: window.MAPA.
@@ -156,7 +158,7 @@ const retic = new THREE.Mesh(new THREE.RingGeometry(0.07, 0.1, 40), mat('#ffffff
 const elastico = new THREE.Mesh(new THREE.BoxGeometry(1, 0.006, 0.03), mat('#facc15')); cena.add(elastico);
 
 const eulerGiro = new THREE.Euler(), qTela = new THREE.Quaternion(), qAjuste = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));
-const qY = new THREE.Quaternion(), EIXO_Y = new THREE.Vector3(0, 1, 0), EIXO_Z = new THREE.Vector3(0, 0, 1);
+const qBruto = new THREE.Quaternion(), qY = new THREE.Quaternion(), EIXO_Y = new THREE.Vector3(0, 1, 0), EIXO_Z = new THREE.Vector3(0, 0, 1);
 function atualizarCamera() {
   if (orient && !estado.pc) { // mesma conta do DeviceOrientationControls do three.js
     const tela = ((screen.orientation && screen.orientation.angle) || 0) * d2r;
@@ -166,6 +168,7 @@ function atualizarCamera() {
     eulerGiro.set(estado.pitch * d2r, estado.yaw * d2r, 0, 'YXZ');
     camera.quaternion.setFromEuler(eulerGiro);
   }
+  qBruto.copy(camera.quaternion); // orientação "real" do celular (usada pelo simulador)
   camera.quaternion.premultiply(qY.setFromAxisAngle(EIXO_Y, estado.giro)); // correção de giro (emenda dos cômodos)
   const o = origemAtual();
   camera.position.set(o.x, casa.h, o.z);
@@ -232,8 +235,16 @@ function atualizarRetic() {
 
 // ---------- câmera ----------
 const video = $('video');
+// ?sim=vr: a "câmera" é a casa de exemplo em 3D (vr.html) vista da mesma pose do celular (teste e demonstração no PC)
+let simVR = null; const SIM_POS = (PARAM.get('pos') || '2.3,1.8').split(',').map(Number);
 async function abrirCamera() {
-  if (VIDEO_TESTE) { video.src = VIDEO_TESTE; video.loop = true; }
+  if (PARAM.get('sim') === 'vr') {
+    const fr = document.createElement('iframe'); fr.src = 'vr.html?exemplo&modo=andar&sim=1';
+    fr.style.cssText = 'position:fixed;left:0;top:0;width:100vw;height:100vh;border:0;z-index:-1'; document.body.prepend(fr);
+    await new Promise(ok => { const t = setInterval(() => { if (fr.contentWindow && fr.contentWindow.VR) { clearInterval(t); ok(); } }, 100); });
+    simVR = { fr, x: SIM_POS[0], z: SIM_POS[1] };
+    video.srcObject = fr.contentDocument.getElementById('vr').captureStream(30);
+  } else if (VIDEO_TESTE) { video.src = VIDEO_TESTE; video.loop = true; }
   else video.srcObject = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } });
   await new Promise(ok => { if (video.readyState >= 1) ok(); else video.onloadedmetadata = ok; });
   await video.play();
@@ -261,6 +272,7 @@ async function iniciar() {
   }
   $('carregando').hidden = true; $('hud').hidden = false;
   ajustarTela();
+  if ($('chkIA').checked) ligarIA();
   estado.etapa = casa.comodos.length ? 'resumo' : 'nome';
   ui(); requestAnimationFrame(quadro);
   setTimeout(() => { if (!orient) { estado.pc = true; aviso('🖱️ Sem giroscópio (PC): <small>arraste a tela para olhar em volta</small>', '#475569'); } }, 1500);
@@ -271,6 +283,8 @@ let tMini = 0, tLuz = 0;
 function quadro(t) {
   requestAnimationFrame(quadro);
   atualizarCamera(); calcularMira();
+  if (simVR) { const q = qBruto; simVR.fr.contentWindow.VR.pose(simVR.x, casa.h, simVR.z, [q.x, q.y, q.z, q.w], camera.fov); }
+  if (estado.etapa === 'cantos' && IA) cicloIA(t);
   if (estado.mira) { const h = estado.hist; h.push({ x: estado.mira.x, z: estado.mira.z, t }); if (h.length > 40) h.shift(); }
   if (estado.etapa === 'cantos') registrarVolta(t);
   if (estado.sujo) { montarAR(); estado.sujo = false; }
@@ -362,7 +376,125 @@ function calibrar(cm, i) {
   notaPlanta = `📏 Calibrada com a trena: tudo foi corrigido em ${k >= 1 ? '+' : ''}${fmt((k - 1) * 100, 1)}% · altura do celular agora ${fmt(casa.h)} m`;
   abrirPlanta();
 }
-function zerarVolta() { estado.bins.fill(false); estado.luz.fill(0); estado.pilha = []; estado.voltaOk = false; }
+function zerarVolta() { estado.bins.fill(false); estado.luz.fill(0); estado.pilha = []; estado.voltaOk = false; zerarIA(); }
+
+// ---------- 🤖 IA: a parede é achada sozinha ----------
+// A cada ~0,3 s a imagem vai para a rede neural. Em cada coluna, o rodapé (parede com chão logo abaixo)
+// vira um raio que sai da câmera; onde o raio cruza o chão (altura h) está um ponto da parede: a mesma
+// trigonometria da mira, só que para dezenas de pontos por quadro, sem tocar em nada.
+let IA = null, iaOcupada = false, tIA = 0, verIA = true, iaAuto = false;
+const ia = { bins: Array.from({ length: 180 }, () => []), n: 0, poli: null, ms: 0 };
+const camFoto = new THREE.PerspectiveCamera(), v3 = new THREE.Vector3();
+const iaCv = $('iaMapa'), iaCtx = iaCv.getContext('2d');
+function zerarIA() { ia.bins.forEach(b => { b.length = 0; }); ia.n = 0; ia.poli = null; iaAuto = false; iaCtx.clearRect(0, 0, iaCv.width, iaCv.height); }
+async function ligarIA() {
+  const chip = $('iaChip'); chip.hidden = false; chip.textContent = '🤖 Baixando a IA…';
+  try {
+    IA = await import('./ia_paredes.js');
+    const vistos = {};
+    await IA.carregar(p => { if (p.status === 'progress' && p.total) { vistos[p.file] = [p.loaded, p.total]; const v = Object.values(vistos), a = v.reduce((s, x) => s + x[0], 0), b = v.reduce((s, x) => s + x[1], 0); chip.textContent = `🤖 Baixando a IA… ${Math.round(a / b * 100)}%`; } });
+    chip.textContent = '🤖 IA pronta'; ui();
+    aviso(`🤖 IA ligada <small>roda no celular: ${IA.dispositivo}</small>`, '#7c3aed');
+  } catch (e) { IA = null; chip.textContent = '🤖 IA indisponível · modo manual'; console.warn(e); }
+}
+const qAntes = []; // orientações recentes: girando rápido, a imagem chega "atrasada" e a medida sai torta
+async function cicloIA(t) {
+  qAntes.push({ q: camera.quaternion.clone(), t }); while (qAntes.length > 2 && t - qAntes[1].t > 160) qAntes.shift();
+  if (!IA.pronto() || iaOcupada || t - tIA < 300 || video.readyState < 2 || estado.dir.y > -0.08) return;
+  if (!simVR && qAntes.length > 1 && qAntes[0].q.angleTo(camera.quaternion) > 5 * d2r) return; // > ~30°/s: espera ficar mais parado
+  iaOcupada = true; tIA = t;
+  camFoto.copy(camera); camFoto.updateMatrixWorld();
+  const cm = estado.atual, o = { ...origemAtual() };
+  try {
+    let fonte = video, vw = video.videoWidth, vh = video.videoHeight;
+    if (simVR) { const q = qBruto; fonte = simVR.fr.contentWindow.VR.pose(simVR.x, casa.h, simVR.z, [q.x, q.y, q.z, q.w], camera.fov, true); vw = fonte.width; vh = fonte.height; }
+    const W = innerWidth, H = innerHeight, s = Math.max(W / vw, H / vh), sw = W / s, sh = H / s;
+    const r = await IA.segmentar(fonte, (vw - sw) / 2, (vh - sh) / 2, sw, sh);
+    if (estado.etapa !== 'cantos' || estado.atual !== cm) return;
+    ia.ms = r.ms;
+    for (const p of IA.rodapes(r)) {
+      v3.set(p.u * 2 - 1, 1 - p.v * 2, 0.5).unproject(camFoto).sub(camFoto.position).normalize();
+      if (v3.y > -0.05) continue;
+      const k = casa.h / -v3.y, x = v3.x * k, z = v3.z * k, d = Math.hypot(x, z);
+      if (d < 0.4 || d > 7) continue;
+      const bin = ia.bins[Math.floor(((Math.atan2(z, x) + 2 * Math.PI) % (2 * Math.PI)) / (2 * Math.PI) * 180) % 180];
+      bin.push({ x: o.x + x, z: o.z + z, d, tipo: p.tipo }); if (bin.length > 9) bin.shift();
+      ia.n++;
+    }
+    const antes = ia.poli && ia.poli.cantos.length;
+    ia.poli = poligonoIA(cm);
+    if (verIA) { iaCv.width = 96; iaCv.height = Math.round(96 * H / W); IA.pintarMapa(r, iaCtx, iaCv.width, iaCv.height); }
+    $('iaChip').textContent = `🤖 ${ia.n} pontos${ia.poli ? ` · ${ia.poli.cantos.length} paredes` : ''} · ${Math.round(r.ms)} ms`;
+    if ((ia.poli && ia.poli.cantos.length) !== antes) ui();
+    if (!iaAuto && cm.cantos.length === 0 && volta() >= 0.95 && ia.poli && ia.poli.cantos.length >= 4 && ia.poli.cheios >= 80) {
+      iaAuto = true; aviso('🤖 Volta completa: <b>a IA fechou a planta</b>', '#7c3aed'); setTimeout(() => { if (estado.etapa === 'cantos' && estado.atual === cm) concluir(); }, 700);
+    }
+  } catch (e) { console.warn(e); } finally { iaOcupada = false; }
+}
+function distSeg(p, a, b) { const e = sub(b, a), L2 = dot(e, e) || 1e-9, t = Math.max(0, Math.min(1, dot(sub(p, a), e) / L2)); return dist(p, add(a, mul(e, t))); }
+// Casas têm paredes retas e em ângulo reto. Em cada um dos 4 lados, a parede é a reta onde MUITAS
+// direções da volta concordam; entre as candidatas, a mais LONGE vence, porque móvel fica na frente
+// da parede, nunca atrás. Depois, ao longo de cada parede, procura portas, janelas e passagens.
+function poligonoIA(cm) {
+  const o = cm.origem, rep = [], todos = [];
+  for (let b = 0; b < 180; b++) { // 1 ponto por direção (2°): a mediana das medidas
+    const L = ia.bins[b]; L.forEach(p => todos.push({ p, b }));
+    if (!L.length) { rep.push(null); continue; }
+    const m = L.slice().sort((a, c) => a.d - c.d)[L.length >> 1], cont = {};
+    L.forEach(p => { cont[p.tipo] = (cont[p.tipo] || 0) + 1; });
+    rep.push({ x: m.x, z: m.z, d: m.d, b, tipo: Object.entries(cont).sort((a, c) => c[1] - a[1])[0][0] });
+  }
+  const cheios = rep.filter(Boolean).length; if (cheios < 30) return null;
+  const seq = rep.filter(Boolean); let sx = 0, sy = 0; // direção principal das paredes (módulo 90°)
+  for (let i = 0; i < seq.length; i++) {
+    const u = sub(seq[(i + 1) % seq.length], seq[i]), L = Math.hypot(u.x, u.z); if (L < 0.03 || L > 0.5) continue;
+    const th = Math.atan2(u.z, u.x); sx += Math.cos(4 * th) * L; sy += Math.sin(4 * th) * L;
+  }
+  const dom = Math.atan2(sy, sx) / 4, ex = { x: Math.cos(dom), z: Math.sin(dom) }, ez = { x: -Math.sin(dom), z: Math.cos(dom) };
+  const lados = [[ex, 1], [ez, 1], [ex, -1], [ez, -1]], dist4 = [];
+  for (const [e, sg] of lados) {
+    const vals = [];
+    for (const { p, b } of todos) {
+      const v = sub(p, o), d = Math.hypot(v.x, v.z), c = dot(v, e) * sg; if (d < 0.3 || c / d < Math.cos(42 * d2r)) continue;
+      vals.push({ c, b });
+    }
+    if (vals.length < 4) return null;
+    const apoio = new Map(); // para cada distância (de 5 em 5 cm): quantas DIREÇÕES diferentes têm ponto ali
+    for (const { c } of vals) { const k = Math.round(c / 0.05); if (!apoio.has(k)) apoio.set(k, null); }
+    let max = 0; const cand = [];
+    for (const k of apoio.keys()) {
+      const bs = new Set(); for (const v of vals) if (Math.abs(v.c - k * 0.05) < 0.1) bs.add(v.b);
+      cand.push({ k, n: bs.size }); max = Math.max(max, bs.size);
+    }
+    const ok = cand.filter(c => c.n >= Math.max(4, max * 0.35)).sort((a, b) => b.k - a.k)[0];
+    if (!ok) { const cs = vals.map(v => v.c).sort((a, b) => a - b); dist4.push(cs[Math.floor(cs.length * 0.8)]); continue; } // parede quase toda escondida: estimativa
+    const perto = vals.filter(v => Math.abs(v.c - ok.k * 0.05) < 0.12);
+    dist4.push(perto.reduce((s2, v) => s2 + v.c, 0) / perto.length);
+  }
+  if (dist4.some(d => d < 0.5 || d > 8)) return null;
+  const P = (a, b) => add(o, add(mul(ex, a), mul(ez, b)));
+  const cantos = [P(dist4[0], dist4[1]), P(-dist4[2], dist4[1]), P(-dist4[2], -dist4[3]), P(dist4[0], -dist4[3])];
+  if (areaAss(cantos) < 0) cantos.reverse();
+  // ao longo das paredes: o raio de cada direção bate na parede a s metros; ponto bem mais longe = vão (passagem)
+  const raioB = b => { const a = (b + 0.5) / 180 * 2 * Math.PI; return raioNaPlanta(cantos, o, { x: Math.cos(a), z: Math.sin(a) }); };
+  for (const r of rep) if (r) { const h = raioB(r.b); r.s = h ? h.s : r.d; r.salto = r.d > r.s + 0.45; r.naParede = Math.abs(r.d - r.s) < 0.3; }
+  const aberturas = [];
+  const trechos = (teste, tipo, min, max) => {
+    for (let b = 0; b < 180; b++) {
+      const T = i => rep[(i + 180) % 180] && teste(rep[(i + 180) % 180]);
+      if (!T(b) || T(b - 1)) continue;
+      let e = b; while (T(e + 1) && e - b < 60) e++;
+      if (e - b < 1) continue;
+      const a0 = raioB(b), a1 = raioB(e); if (!a0 || !a1) continue;
+      const larg = dist(a0.p, a1.p) + 0.05; if (larg < min || larg > max) continue;
+      aberturas.push({ tipo, p: mul(add(a0.p, a1.p), 0.5), larg: Math.min(larg, tipo === 'porta' ? 1 : larg) });
+    }
+  };
+  trechos(r => r.naParede && r.tipo === 'porta', 'porta', 0.5, 1.6);
+  trechos(r => r.naParede && r.tipo === 'janela', 'janela', 0.5, 3);
+  trechos(r => r.salto, 'passagem', 0.55, 2.2);
+  return { cantos, rep, cheios, aberturas };
+}
 
 function novoComodo(nome) {
   const i = casa.comodos.length;
@@ -461,7 +593,12 @@ function endireitar(cm) { // 1º cômodo: paredes alinhadas com a tela (planta "
   estado.giro += d;
 }
 function concluir() {
-  const cm = estado.atual; if (cm.cantos.length < 3) return;
+  const cm = estado.atual;
+  if (cm.cantos.length < 3 && ia.poli) { // sem cantos marcados à mão: usa as paredes achadas pela IA
+    cm.cantos = ia.poli.cantos.map(p => ({ x: p.x, z: p.z })); cm.ia = true;
+    for (const a of ia.poli.aberturas) if (!cm.aberturas.some(b => dist(b.p, a.p) < 0.6)) cm.aberturas.push({ id: novoId(), tipo: a.tipo, p: a.p, larg: a.larg, ia: true });
+  }
+  if (cm.cantos.length < 3) return;
   cm.cantos = esquadrejar(cm.cantos);
   const sug = sugerirJanelas(cm);
   encaixar(cm); cm.fechado = true;
@@ -503,6 +640,12 @@ function executar(a) {
   else if (acao === 'teto') { if (estado.atual && estado.atual.fechado) { estado.etapa = 'teto'; ui(); } }
   else if (acao === 'medirTeto') medirTeto();
   else if (acao === 'cancelar') { estado.etapa = 'resumo'; ui(); }
+  else if (acao === 'maisPorta') { if (estado.atual && estado.atual.fechado) { estado.etapa = 'porta'; ui(); } }
+  else if (acao === 'extra') { // porta/passagem marcada depois de concluir (a IA não viu, ou estava atrás de um móvel)
+    const m = miraEstavel(), cm = estado.atual; if (!m) return aviso('Mire a <b>base</b> da porta, no chão', '#b45309');
+    cm.aberturas.push({ id: novoId(), tipo: x, p: { x: m.x, z: m.z }, larg: LARG[x] }); encaixar(cm);
+    estado.etapa = 'resumo'; pop(); salvar(); sujar(); ui(); aviso(`${ICONE[x]} ${NOME[x]} marcada`, COR_AB[x]);
+  }
   else if (acao === 'sim' || acao === 'nao') {
     const cm = estado.atual, ab = cm.aberturas.find(b => b.id === x);
     if (ab) { if (acao === 'sim') delete ab.sugerida; else cm.aberturas.splice(cm.aberturas.indexOf(ab), 1); }
@@ -511,6 +654,7 @@ function executar(a) {
 }
 $('barra').addEventListener('click', e => { const b = e.target.closest('button[data-a]'); if (b && !b.disabled) executar(b.dataset.a); });
 $('btnRefazer').addEventListener('click', refazer);
+$('iaChip').addEventListener('click', () => { verIA = !verIA; iaCv.hidden = !verIA; aviso(verIA ? '👁️ Mostrando o que a IA vê <small>amarelo = parede · verde = chão · laranja = porta · azul = janela</small>' : 'Visão da IA escondida', '#7c3aed'); });
 $('btnPlanta').addEventListener('click', () => abrirPlanta());
 
 // ---------- painel de baixo ----------
@@ -528,15 +672,21 @@ function ui() {
     ac = '<div class="acoes"><button class="principal" style="grid-column:span 4" data-a="entrada">🚪 Entrei por esta porta</button></div>';
     st = `🔗 ${cm.nome}: emendando na planta`;
   } else if (e === 'cantos') {
-    const n = cm.cantos.length, v = volta();
-    txt = n === 0 ? 'Gire devagar. <b>Mire um canto do chão</b> (onde duas paredes se encontram) e toque <b>📍 Canto</b>.'
+    const n = cm.cantos.length, v = volta(), iaOk = n === 0 && ia.poli;
+    txt = n === 0 && IA ? (ia.poli ? `🤖 A IA já achou <b>${ia.poli.cantos.length} paredes</b>${ia.poli.aberturas.length ? ` e <b>${ia.poli.aberturas.length} porta(s)/janela(s)</b>` : ''}. Continue girando devagar até fechar a volta.`
+      : '🤖 <b>Só gire devagar</b>, com o celular um pouco inclinado para o chão. A IA procura sozinha a linha onde a <b>parede encontra o chão</b>. <small>(Os botões continuam valendo, se quiser marcar à mão.)</small>')
+      : n === 0 ? 'Gire devagar. <b>Mire um canto do chão</b> (onde duas paredes se encontram) e toque <b>📍 Canto</b>.'
       : n < 3 ? `Boa! Continue girando no mesmo sentido e marque o próximo canto (${n} de pelo menos 3).`
         : v < 0.9 ? 'Continue a volta. Viu <b>porta, janela ou passagem</b>? Mire a <b>base</b> dela no chão e toque no botão.'
           : '<b>Volta completa!</b> Toque em <b>✅ Concluir</b> para fechar a planta do cômodo.';
     ac = `<div class="acoes"><button class="principal" data-a="canto">📍 Canto</button><button data-a="porta">🚪 Porta</button><button data-a="janela">🪟 Janela</button>
       <button data-a="passagem">↔️ Passagem</button><button data-a="desfazer" ${estado.pilha.length ? '' : 'disabled'}>↩️ Voltar</button>
-      <button class="fim ${n >= 3 && v >= 0.9 ? 'pronto' : ''}" data-a="concluir" ${n < 3 ? 'disabled' : ''}>✅ Concluir</button></div>`;
+      <button class="fim ${(n >= 3 || iaOk) && v >= 0.9 ? 'pronto' : ''}" data-a="concluir" ${n < 3 && !iaOk ? 'disabled' : ''}>✅ Concluir</button></div>`;
     st = `📍 ${cm.nome} · ${n} canto${n === 1 ? '' : 's'}`;
+  } else if (e === 'porta') {
+    txt = `Mire a <b>base da porta</b> (ou passagem) do(a) ${cm.nome} no chão e toque:`;
+    ac = '<div class="acoes"><button class="principal" data-a="extra:porta">🚪 Porta</button><button data-a="extra:passagem">↔️ Passagem</button><button data-a="cancelar">✕</button></div>';
+    st = `🚪 ${cm.nome}: marcar porta`;
   } else if (e === 'teto') {
     txt = `📐 <b>Altura do teto</b> do(a) ${cm.nome}: levante o celular e mire a <b>linha onde a parede encontra o teto</b> (de preferência uma parede livre, sem armário).`;
     ac = '<div class="acoes"><button class="principal" style="grid-column:span 3" data-a="medirTeto">📐 Medir aqui</button><button data-a="cancelar">✕</button></div>';
@@ -549,9 +699,9 @@ function ui() {
       for (const a of cm.aberturas.filter(b => b.sugerida))
         txt += `<div class="sugestao"><span>💡 Pela <b>claridade</b>, parece ter uma <b>janela</b> ali (tracejada na planta).</span><button data-a="sim:${a.id}">✅ é</button><button data-a="nao:${a.id}">❌</button></div>`;
     } else txt = `🏠 Você tem <b>${casa.comodos.length} cômodo(s)</b> salvos (${fmt(areaTotal(), 1)} m²).`;
-    txt += L.length ? '<br><b>Para onde agora?</b> Escolha a porta e passe por ela:' : '<br>Marque uma porta ou passagem para emendar o próximo cômodo.';
+    txt += L.length ? '<br><b>Para onde agora?</b> Escolha a porta e passe por ela:' : '<br>Toque em <b>🚪 Marcar porta</b> para emendar o próximo cômodo.';
     ac = `<div class="chips">${L.map(l => `<button class="vai" data-a="ir:${l.c.id}:${l.a.id}">➡️ ${l.rot}</button>`).join('')}
-      ${cm && cm.fechado ? `<button class="sec" data-a="teto">📐 ${cm.pe ? 'Medir o teto de novo' : 'Altura do teto'}</button>` : ''}<button class="sec" data-a="planta">🗺️ Ver a planta</button><button class="sec" data-a="separado">➕ Cômodo separado</button></div>`;
+      ${cm && cm.fechado ? `<button class="sec" data-a="teto">📐 ${cm.pe ? 'Medir o teto de novo' : 'Altura do teto'}</button>` : ''}${cm && cm.fechado ? '<button class="sec" data-a="maisPorta">🚪 Marcar porta</button>' : ''}<button class="sec" data-a="planta">🗺️ Ver a planta</button><button class="sec" data-a="separado">➕ Cômodo separado</button></div>`;
     st = `🏠 ${casa.comodos.length} cômodo(s) · ${fmt(areaTotal(), 1)} m²`;
   }
   $('barraTxt').innerHTML = txt; $('barraAcoes').innerHTML = ac; $('statusTxt').textContent = st;
@@ -570,6 +720,7 @@ function enquadrar(W, H, vivo, pad) {
   const pts = casa.comodos.flatMap(c => [...c.cantos, ...c.aberturas.map(a => a.p)]);
   if (estado.atual && estado.etapa !== 'capa') pts.push(estado.atual.origem);
   if (vivo && estado.mira && ['cantos', 'entrada'].includes(estado.etapa)) pts.push(estado.mira);
+  if (vivo && ia.poli && estado.etapa === 'cantos') pts.push(...ia.poli.cantos);
   const B = limites(pts), sx = Math.max(B.x1 - B.x0, 3.5), sz = Math.max(B.z1 - B.z0, 3.5);
   return { cx: (B.x0 + B.x1) / 2, cz: (B.z0 + B.z1) / 2, esc: Math.min((W - 2 * pad) / sx, (H - 2 * pad) / sz) };
 }
@@ -587,6 +738,10 @@ function desenharPlanta(g, W, H, v, op = {}) {
   for (const cm of fechados) { caminho(cm.cantos); g.closePath(); g.fillStyle = cm.cor; g.fill(); }
   for (const cm of fechados) desenharParedes(g, cm, X, Y, v.esc, k);
   const at = estado.atual;
+  if (op.vivo && at && !at.fechado && estado.etapa === 'cantos' && ia.n) { // o que a IA achou: pontos e paredes
+    for (const r of (ia.poli ? ia.poli.rep : ia.bins.map(b => b[b.length - 1]))) if (r) { g.beginPath(); g.arc(X(r), Y(r), 1.8 * k, 0, 7); g.fillStyle = r.salto ? '#cbd5e1' : r.tipo === 'porta' ? '#f97316' : r.tipo === 'janela' ? '#0ea5e9' : '#a855f7'; g.fill(); }
+    if (ia.poli) { g.setLineDash([5 * k, 3 * k]); g.strokeStyle = '#7c3aed'; g.lineWidth = 2.5 * k; caminho(ia.poli.cantos); g.closePath(); g.stroke(); g.setLineDash([]); }
+  }
   if (at && !at.fechado) { // cômodo sendo medido agora
     g.lineCap = 'round'; g.lineJoin = 'round';
     if (at.cantos.length >= 3) { g.setLineDash([4 * k, 4 * k]); g.strokeStyle = '#94a3b8'; g.lineWidth = 1.5 * k; caminho([at.cantos[at.cantos.length - 1], at.cantos[0]]); g.stroke(); }
@@ -863,7 +1018,7 @@ $('gl').addEventListener('pointermove', e => {
 
 // para testes automáticos e demonstração no PC
 window.MAPA = {
-  estado, casa: () => casa, executar, abrirPlanta, trocarAba, compartilhar, materiais, calibrar: (c, i) => calibrar(casa.comodos[c], i), vista2d: () => vista2d,
+  estado, ia, casa: () => casa, executar, simIr(x, z) { if (simVR) { simVR.x = x; simVR.z = z; } }, abrirPlanta, trocarAba, compartilhar, materiais, calibrar: (c, i) => calibrar(casa.comodos[c], i), vista2d: () => vista2d,
   olhar(yaw, pitch) { estado.pc = true; estado.yaw = yaw; estado.pitch = pitch; },
   mirarEm(x, z) { // aponta a mira para o ponto (x, z) do chão
     const o = origemAtual(), dx = x - o.x, dz = z - o.z;

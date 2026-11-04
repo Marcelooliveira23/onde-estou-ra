@@ -6,12 +6,13 @@ Protótipo de **Realidade Aumentada** para a disciplina *Realidade Virtual e Aum
 **Utilidade:** ver **móveis, plantas e quadros de verdade, em tamanho real**, dentro da própria casa **antes de comprar**:
 se o sofá cabe, se a planta combina, em que altura fica o quadro. Evita compras erradas e devoluções.
 
-## Os 4 modos
+## Os 5 modos
 
 | Modo | Como funciona | Precisa de placa? |
 |---|---|---|
 | **🪄 Decorar o ambiente** (`livre.html`) | **SLAM visual** no navegador (AlvaAR/WebAssembly): reconhece o **chão** e as **paredes** pela câmera. Toque no lugar e o objeto aparece ali, em tamanho real. Arraste, gire, aumente/diminua, troque a obra do quadro | **Não** |
-| **🗺️ Mapear a casa** (`mapear.html`) | Volta de 360° no meio de cada cômodo mirando os **cantos do chão**, **portas**, **janelas** e **passagens**. Mede pela **inclinação do celular** (d = h ÷ tan θ) e desenha a **planta ao vivo** no canto da tela. Passou pela porta, o próximo cômodo é **emendado** na planta. No fim: **planta 2D com medidas e m²**, **maquete 3D** e imagem para compartilhar | **Não** |
+| **🗺️ Mapear a casa** (`mapear.html`) | Volta de 360° no meio de cada cômodo mirando os **cantos do chão**, **portas**, **janelas** e **passagens**. Mede pela **inclinação do celular** (d = h ÷ tan θ) e desenha a **planta ao vivo** no canto da tela. Passou pela porta, o próximo cômodo é **emendado** na planta. No fim: **planta 2D com medidas e m²**, **maquete 3D** e imagem para compartilhar. **🤖 IA (beta):** uma rede neural (SegFormer) roda no celular e acha **sozinha** o rodapé, as portas e as janelas enquanto você gira: basta dar a volta | **Não** |
+| **🥽 Casa em VR** (`vr.html`) | A planta medida vira uma **casa 3D realista** (sem planta salva, abre uma casa de exemplo). **Mobilie** com os móveis reais, **pinte** as paredes, troque o **piso**, **passeie por dentro** (joystick, giroscópio, colisão com as paredes), **dia/noite**, foto, e **👓 óculos VR** de papelão (tela dividida) | **Não** |
 | **📍 Com placa na parede** (`index.html`) | **Rastreamento de imagem** (MindAR): a placa vira a âncora. Localizador da casa (mapa 3D no canto, rota até o cômodo, como no exemplo do professor) + **decoração presa à parede**, salva no celular | Sim |
 | **📱 AR nativo do iPhone** | **AR Quick Look** do iOS (ARKit) com arquivos `.usdz` gerados dos mesmos modelos | Não |
 
@@ -38,7 +39,9 @@ se o sofá cabe, se a planta combina, em que altura fica o quadro. Evita compras
 
 ## Como usar no iPhone (mapear a casa)
 
-1. **🗺️ Mapear a casa** → ajuste a **altura do celular** (peito; pessoa de 1,70 m ≈ 1,40 m) → **📷 Começar** → permita câmera e movimento.
+1. **🗺️ Mapear a casa** → ajuste a **altura do celular** (peito; pessoa de 1,70 m ≈ 1,40 m) → deixe marcado **🤖 IA acha as paredes sozinha** → **📷 Começar** → permita câmera e movimento. Na 1ª vez a IA baixa ~15 MB (use Wi-Fi).
+   - **Com a IA:** só gire devagar, com o celular um pouco inclinado para o chão. Os pontos roxos no mapa são o rodapé que ela achou; com a volta completa ela **fecha a planta sozinha**. Toque no selo roxo 🤖 para ver/esconder o que a IA enxerga (amarelo = parede, verde = chão, laranja = porta, azul = janela). Se ela não viu a porta (atrás de um móvel), use **🚪 Marcar porta**.
+   - **Sem a IA** (ou para cômodos em L): marque os cantos à mão, como nos passos abaixo.
 2. Escolha o cômodo (**Sala**, **Cozinha**…). Fique em pé **no meio** dele.
 3. Gire devagar. A cada **canto do chão** (onde duas paredes se encontram), ponha a **mira** e toque **📍 Canto**. A planta aparece no canto da tela.
 4. Viu uma porta, janela ou passagem? Mire a **base** dela no chão e toque **🚪 / 🪟 / ↔️**. Errou? **↩️ Voltar**.
@@ -52,6 +55,14 @@ se o sofá cabe, se a planta combina, em que altura fica o quadro. Evita compras
 
 > **Sobre a escala:** sem placa, a câmera sozinha não sabe medidas absolutas. O app supõe o celular a ~1,3 m do chão (pessoa em pé).
 > Se o objeto parecer grande ou pequeno demais, ajuste com − / +. No modo **com placa** a escala é exata (a placa tem 17 cm).
+
+## 🥽 Casa em Realidade Virtual
+1. Na planta, toque em **🥽 Mobiliar em VR** (ou na tela inicial, **🥽 Casa em Realidade Virtual**).
+2. **🏠 Casa:** vista de cima com as paredes cortadas. Escolha um móvel em **🛋️ Mobiliar** e **toque no chão** (quadro e relógio: toque na parede). Toque no móvel para **arrastar, girar ↺ ↻ ou apagar 🗑️**.
+3. **🎨 Pintar:** cor da parede e piso (madeira, madeira escura, porcelanato, mármore, cimento queimado) de cada cômodo.
+4. **🚶 Passear:** você entra na casa, na altura dos olhos. Joystick para andar, arraste para olhar, ou **📱** para olhar mexendo o celular. Toque no chão para ir até lá. As paredes bloqueiam; portas e passagens deixam passar.
+5. **👓 Óculos VR:** celular deitado num óculos de papelão. Mexa a cabeça para olhar e **toque na tela** para andar.
+6. **🌙** liga a noite (luminárias acesas) e **📸** tira foto.
 
 ## Por que não Unity?
 

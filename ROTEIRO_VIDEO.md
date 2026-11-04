@@ -37,10 +37,12 @@ Toque em **📸**.
 
 ### 4c. Mapear a casa (2:05–3:05): o "uau" do vídeo
 Volte ao início → **🗺️ Mapear a casa** → **Começar** → **Sala**. Fique no meio do cômodo.
-> "Agora o app vai **montar a planta da minha casa**. Eu fico no meio do cômodo e dou uma volta de 360°, mirando os **cantos do chão**."
+> "Agora o app vai **montar a planta da minha casa**. Eu só fico no meio do cômodo e dou uma volta de 360°."
 
-Marque 4 cantos, uma **🚪 porta** e uma **🪟 janela**. Mostre a **planta ao vivo** crescendo no canto da tela. **✅ Concluir**.
-> "Ele mede pela **inclinação do celular**: sabendo a altura do celular e o ângulo, a distância é **altura ÷ tangente do ângulo**. Pronto: a sala tem tantos metros quadrados."
+Gire devagar. Toque no selo roxo **🤖** para mostrar **o que a IA vê** (parede amarela, chão verde). Mostre os pontos roxos aparecendo na planta. No fim da volta ela **fecha a planta sozinha**.
+> "Uma **inteligência artificial roda aqui no celular** e pinta cada pixel: parede, chão, porta, janela. Onde a parede encontra o chão, o app calcula a distância pela **inclinação do celular**: altura ÷ tangente do ângulo. Eu não toquei em nada, e a sala tem tantos metros quadrados."
+
+*(Se a IA errar num cômodo cheio de móveis: 🔄 e marque os 4 cantos com 📍, que funciona sempre.)*
 
 Toque **➡️ Porta**, vá para o próximo cômodo, **mire a porta por onde entrou** → marque os cantos → **✅**.
 > "Quando eu passo pela porta, o app **emenda** o próximo cômodo na planta, porque a porta é o mesmo ponto nos dois cômodos."
@@ -50,6 +52,13 @@ Toque **📐 Altura do teto**, levante o celular para a linha do teto → **📐
 
 Toque **🗺️** → toque numa parede da planta e digite a medida da **trena**. Depois **🧊 Maquete** (gire com o dedo) e **🧮 Materiais**.
 > "Se eu medir **uma** parede com a trena, o app corrige a casa inteira. No fim eu tenho a **planta com as medidas**, uma **maquete 3D** e a **lista do que comprar**: piso, rodapé e quantos galões de tinta. Dá para mandar tudo para o arquiteto ou o pedreiro."
+
+### 4d. Realidade Virtual: mobiliar a casa medida (+40 s)
+Na planta, toque **🥽 Mobiliar em VR**. Ponha um **sofá**, uma **mesa** e uma **planta** tocando no chão; em **🎨 Pintar**, troque a cor da parede e o piso.
+> "A planta que eu medi vira uma **casa em realidade virtual**. Eu mobilio e pinto antes de comprar."
+
+Toque **🚶 Passear** e ande pela casa com o joystick, passando pela porta. Toque **🌙** para ver de noite. Mostre **👓 Óculos VR** por 3 segundos.
+> "E eu posso **andar por dentro** dela, até com óculos de realidade virtual. Então o projeto tem as duas coisas da disciplina: **realidade aumentada**, em cima da câmera, e **realidade virtual**, dentro da casa."
 
 ### 5. Outros modos (opcional, uma frase)
 > "Também tem o modo **com placa**, em que uma imagem na parede serve de âncora e deixa a escala exata, com um localizador da casa. E o botão **AR do iPhone** abre os mesmos objetos na RA nativa do iOS."
@@ -73,6 +82,8 @@ Abra **🧠 Como funciona** (link na tela inicial) e vá descendo pelo diagrama 
 - [ ] Gravado **na tela do iPhone**, com o app rodando de verdade (não o simulador)
 - [ ] **Sua voz** explicando, **sem música**
 - [ ] Mostrou: reconhecer o chão → colocar móvel → andar em volta → parede → quadro → trocar a obra → 📸 foto
-- [ ] Mostrou: 🗺️ mapear 2 cômodos → planta ao vivo → emenda pela porta → 📐 teto → 📏 trena → maquete 3D → 🧮 materiais
+- [ ] Mostrou: 🗺️ mapear 2 cômodos (🤖 IA) → planta ao vivo → emenda pela porta → 📐 teto → 📏 trena → maquete 3D → 🧮 materiais
+- [ ] Mostrou: 🥽 VR → mobiliar → pintar → passear → óculos
+- [ ] Vídeo passou de ~5 min? Corte a parte 5 e encurte a 4b
 - [ ] Explicou a **utilidade** e **como foi feito**
 - [ ] YouTube **Não listado** → link no **AVA Univirtus**
