@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Placas para Imprimir</title>
+<style>
+  :root { font-family: -apple-system, "Segoe UI", Arial, sans-serif; color: #0f172a; }
+  body { margin: 0; background: #f1f5f9; }
+  .topo { max-width: 860px; margin: 0 auto; padding: 20px 16px; }
+  h1 { margin: 0 0 6px; }
+  .topo p { line-height: 1.5; }
+  .grade { max-width: 860px; margin: 0 auto; padding: 0 16px 40px; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+  .item { background: #fff; border-radius: 12px; padding: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,.08); cursor: zoom-in; }
+  .item img { width: 100%; display: block; border-radius: 6px; }
+  .item b { display: block; margin-top: 6px; }
+  .item small { color: #64748b; }
+  button { font-size: 16px; font-weight: 700; padding: 12px 18px; border-radius: 12px; border: 0; background: #2563eb; color: #fff; cursor: pointer; }
+  a { color: #2563eb; font-weight: 600; }
+  /* modo tela cheia para testar apontando o celular para o monitor */
+  #cheia { position: fixed; inset: 0; background: #fff; display: none; align-items: center; justify-content: center; z-index: 9; cursor: zoom-out; }
+  #cheia img { max-width: 92vw; max-height: 92vh; }
+  /* impressão: uma placa por folha A4 */
+  .folha { display: none; }
+  @media print {
+    @page { size: A4 portrait; margin: 12mm; }
+    body { background: #fff; }
+    .topo, .grade, #cheia { display: none !important; }
+    .folha { display: flex; flex-direction: column; align-items: center; page-break-after: always; height: 270mm; justify-content: center; }
+    .folha img { width: 170mm; height: 170mm; }
+    .folha .rodape { display: flex; align-items: center; gap: 8mm; margin-top: 8mm; width: 170mm; }
+    .folha .qr { width: 32mm; height: 32mm; flex: none; }
+    .folha .qr svg { width: 100%; height: 100%; }
+    .folha p { font-size: 12pt; margin: 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="topo">
+    <h1>🖨️ Placas do “Onde Estou?”</h1>
+    <p>Imprima e cole cada placa na parede do cômodo indicado, <b>na altura dos olhos</b> e
+      <b>na parede definida em <code>config.js</code></b> (é isso que faz a seta apontar para o lado certo).
+      Use papel sem brilho e mantenha a placa lisa e bem iluminada.</p>
+    <p><b>Sem impressora?</b> Toque numa placa para abrir em tela cheia e aponte o iPhone para o monitor (ou para outro celular/tablet).</p>
+    <p id="avisoQr"></p>
+    <p><button onclick="print()">Imprimir (1 placa por folha A4)</button> &nbsp; <a href="index.html">← Voltar ao app</a></p>
+  </div>
+  <div class="grade" id="grade"></div>
+  <div id="folhas"></div>
+  <div id="cheia" onclick="this.style.display='none'"><img alt=""></div>
+
+<script src="config.js"></script>
+<script src="lib/qrcode.min.js"></script>
+<script>
+  // QR code que abre o app (aponte a câmera normal do iPhone para a folha impressa)
+  const urlApp = new URL('index.html', location.href).href;
+  function qrSvg(texto) { const q = qrcode(0, 'M'); q.addData(texto); q.make(); return q.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); }
+  const paredes = { N: 'norte', S: 'sul', L: 'leste', O: 'oeste' };
+  const arquivos = ['sala', 'cozinha', 'quarto', 'banheiro'];
+  const ordenados = [...CASA.comodos].sort((a, b) => a.alvo - b.alvo);
+  if (/localhost|127\.0\.0\.1|^file:/.test(location.href)) document.getElementById('avisoQr').innerHTML = '⚠️ <b>Imprima a partir do link do GitHub Pages</b>, assim o QR code da folha aponta para o endereço certo.';
+  for (const c of ordenados) {
+    const src = `marcadores/${arquivos[c.alvo]}.png`;
+    const d = document.createElement('div');
+    d.className = 'item';
+    d.innerHTML = `<img src="${src}" alt="Placa ${c.nome}"><b>${c.nome}</b><small>parede ${paredes[c.parede]}</small>`;
+    d.onclick = () => { const z = document.getElementById('cheia'); z.querySelector('img').src = src; z.style.display = 'flex'; };
+    document.getElementById('grade').appendChild(d);
+    const f = document.createElement('div');
+    f.className = 'folha';
+    f.innerHTML = `<img src="${src}" alt=""><div class="rodape"><div class="qr">${qrSvg(urlApp)}</div><p><b>${c.nome.toUpperCase()}</b>: cole na parede ${paredes[c.parede]}, na altura dos olhos.<br><b>Onde Estou?</b> Localizador da casa em RA<br><small>Sem o app aberto? Aponte a câmera do iPhone para o QR code ao lado.</small></p></div>`;
+    document.getElementById('folhas').appendChild(f);
+  }
+</script>
+</body>
+</html>

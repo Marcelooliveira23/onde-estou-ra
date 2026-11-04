@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f172a">
+<title>Onde Estou? RA</title>
+<link rel="stylesheet" href="css/estilo.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icones/icone-180.png">
+<link rel="icon" href="icones/icone-192.png">
+<meta name="apple-mobile-web-app-title" content="Onde Estou?">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="lib/aframe.min.js"></script>
+<script>
+  // ?sim = modo simulador (sem câmera). Senão carrega o reconhecimento de imagem (MindAR).
+  window.SIMULACAO = new URLSearchParams(location.search).has('sim');
+  if (!window.SIMULACAO) document.write('<script src="lib/mindar-image-aframe.prod.js"><\/script>');
+</script>
+<script src="config.js"></script>
+<script src="js/casa.js"></script>
+<script src="js/maquete.js"></script>
+<script src="js/minimapa3d.js"></script>
+<script src="js/moveis.js"></script>
+</head>
+<body>
+
+<!-- TELA INICIAL -->
+<section id="capa">
+  <div class="capa-conteudo">
+    <div class="logo">📍</div>
+    <h1>Onde Estou?</h1>
+    <p class="sub">Localizador da casa em Realidade Aumentada</p>
+    <p class="desc">Aponte a câmera para a placa colada na parede do cômodo. O app reconhece a imagem,
+      mostra a <b>maquete 3D da casa</b> com <b>“você está aqui”</b>, abre o <b>mapa no canto da tela</b>
+      e indica o caminho até o cômodo que você escolher.</p>
+    <button id="btnIniciar" class="btn-grande">📷 Iniciar câmera</button>
+    <p id="avisoHttps" class="aviso" hidden>⚠️ A câmera só funciona em endereço <b>https://</b>. Abra pelo link do GitHub Pages.</p>
+    <div class="links">
+      <a href="marcadores.html">🖨️ Placas para imprimir</a> &nbsp;·&nbsp; <a href="simulador.html" id="linkSim">👀 Simulador (sem câmera)</a><br>
+      <a href="#" id="linkQL">🛋️ Decorar com o AR do iPhone (sem placa)</a>
+    </div>
+  </div>
+</section>
+
+<!-- CARREGANDO -->
+<div id="carregando" hidden><div class="spinner"></div><p>Abrindo a câmera e carregando o reconhecimento de imagens…</p></div>
+
+<!-- INTERFACE SOBRE A CÂMERA -->
+<div id="hud" hidden>
+  <div id="topo">
+    <div id="status" class="procurando"><span class="pulso"></span><span id="statusTxt">Procurando uma placa… aponte para a imagem na parede</span></div>
+    <button id="btnDecor" class="btn-icone" title="Decorar a parede">🛋️</button>
+    <button id="btnVoz" class="btn-icone" title="Voz">🔇</button>
+  </div>
+
+  <div id="mapa" hidden>
+    <div class="mapa-titulo"><span>MAPA · <span id="mapaComodo"></span></span><button id="btnModoMapa" class="mini-btn">2D</button></div>
+    <canvas id="mapa3d"></canvas>
+    <svg id="mapaSvg" xmlns="http://www.w3.org/2000/svg" hidden></svg>
+  </div>
+
+  <div id="aviso" hidden></div>
+
+  <div id="painel" hidden>
+    <div class="painel-cabeca">
+      <div>
+        <div id="pRotulo" class="rotulo">VOCÊ ESTÁ NA</div>
+        <div id="pNome" class="nome"></div>
+      </div>
+      <div id="pPerdido" class="perdido" hidden>placa fora da câmera · última posição</div>
+    </div>
+    <div id="pInfo" class="info"></div>
+    <div class="rotulo">IR PARA:</div>
+    <div id="destinos" class="destinos"></div>
+    <div id="pInstrucao" class="instrucao"></div>
+  </div>
+
+  <!-- MODO DECORAR: objetos 3D presos à parede da placa -->
+  <div id="decor" hidden>
+    <div class="decor-cabeca"><b id="decorTitulo">🛋️ Decorar</b><span id="decorConta" class="decor-conta"></span><button id="btnDecorFim" class="mini-btn ok">✔ Concluir</button></div>
+    <div id="catalogo" class="destinos"></div>
+    <div id="decorEdicao" class="decor-edicao" hidden>
+      <button id="btnMenor">− menor</button><button id="btnMaior">+ maior</button><button id="btnVariar">🎨 trocar</button><button id="btnRemover">🗑️ remover</button>
+    </div>
+    <div id="decorDica" class="instrucao"></div>
+    <div class="decor-rodape"><button id="btnLimpar" class="link">🧹 Limpar parede</button><button id="btnQL" class="link">📱 AR do iPhone (qualquer lugar)</button></div>
+  </div>
+</div>
+
+<!-- AR NATIVO DO IPHONE (AR Quick Look): detecta chão e paredes sozinho, sem placa -->
+<div id="ql" hidden>
+  <div class="ql-caixa">
+    <div class="decor-cabeca"><b>📱 Ver em tamanho real</b><button id="btnQLFechar" class="mini-btn">✕</button></div>
+    <p class="ql-txt">Usa a <b>RA nativa do iPhone</b> (AR Quick Look): ela encontra o <b>chão</b> e as <b>paredes</b> sozinha, sem placa.
+      Toque num objeto, aponte para o lugar e arraste com o dedo. Feche no ✕ para voltar.</p>
+    <div id="qlLista" class="ql-lista"></div>
+    <p id="qlAviso" class="aviso" hidden>Este recurso abre no <b>Safari do iPhone/iPad</b>. No PC, use o modo 🛋️ Decorar com a placa.</p>
+  </div>
+</div>
+<button id="btnReativar" class="btn-grande" hidden>📷 Voltar para a câmera</button>
+
+<a-scene id="cena"
+  mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; maxTrack: 1; uiLoading: no; uiScanning: no; uiError: yes; filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 2; missTolerance: 8"
+  color-space="sRGB" renderer="colorManagement: true; antialias: true; physicallyCorrectLights: true"
+  vr-mode-ui="enabled: false" xr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false" loading-screen="enabled: false">
+  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+  <a-entity mindar-image-target="targetIndex: 0" maquete-casa="comodo: sala" data-comodo="sala"></a-entity>
+  <a-entity mindar-image-target="targetIndex: 1" maquete-casa="comodo: cozinha" data-comodo="cozinha"></a-entity>
+  <a-entity mindar-image-target="targetIndex: 2" maquete-casa="comodo: quarto" data-comodo="quarto"></a-entity>
+  <a-entity mindar-image-target="targetIndex: 3" maquete-casa="comodo: banheiro" data-comodo="banheiro"></a-entity>
+</a-scene>
+
+<script src="js/decor.js"></script>
+<script src="js/app.js"></script>
+<script>if (window.SIMULACAO) document.write('<script src="js/sim.js"><\/script>');</script>
+</body>
+</html>
