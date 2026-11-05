@@ -96,3 +96,65 @@ export function pintarMapa(r, ctx, w, h) {
   const tmp = document.createElement('canvas'); tmp.width = W; tmp.height = H; tmp.getContext('2d').putImageData(img, 0, 0);
   ctx.clearRect(0, 0, w, h); ctx.imageSmoothingEnabled = true; ctx.drawImage(tmp, 0, 0, w, h);
 }
+
+// ---------- 🛋️ MÓVEIS JÁ EXISTENTES NO CÔMODO ----------
+// Classes de móveis "de chão" do ADE20K → nome, ícone, móvel equivalente do catálogo, profundidade típica (m)
+// e se o tampo serve de APOIO para enfeites (vaso em cima da mesa, porta-retrato na cômoda…).
+export const MOVEIS = {
+  7: { nome: 'Cama', ic: '🛏️', tipo: 'cama_casal', prof: 2.0 },
+  10: { nome: 'Armário', ic: '🗄️', tipo: 'aparador', prof: 0.5, apoio: true },
+  15: { nome: 'Mesa', ic: '🍽️', tipo: 'mesa_jantar', prof: 0.9, apoio: true },
+  19: { nome: 'Cadeira', ic: '🪑', tipo: 'cadeira_jantar', prof: 0.5 },
+  23: { nome: 'Sofá', ic: '🛋️', tipo: 'sofa_moderno', prof: 0.9 },
+  24: { nome: 'Prateleira', ic: '📚', tipo: 'estante', prof: 0.35, apoio: true },
+  30: { nome: 'Poltrona', ic: '💺', tipo: 'poltrona_moderna', prof: 0.85 },
+  31: { nome: 'Assento', ic: '🪑', tipo: 'puff', prof: 0.6 },
+  33: { nome: 'Escrivaninha', ic: '🖥️', tipo: 'escrivaninha', prof: 0.7, apoio: true },
+  35: { nome: 'Guarda-roupa', ic: '🚪', tipo: 'guarda_roupa', prof: 0.6 },
+  37: { nome: 'Banheira', ic: '🛁', tipo: 'banheira', prof: 0.75 },
+  44: { nome: 'Cômoda', ic: '🗄️', tipo: 'comoda_classica', prof: 0.55, apoio: true },
+  45: { nome: 'Balcão', ic: '🧱', tipo: 'balcao_cozinha', prof: 0.6, apoio: true },
+  50: { nome: 'Geladeira', ic: '🧊', tipo: 'geladeira', prof: 0.7 },
+  62: { nome: 'Estante', ic: '📚', tipo: 'estante_livros', prof: 0.4, apoio: true },
+  64: { nome: 'Mesa de centro', ic: '☕', tipo: 'mesa_centro_moderna', prof: 0.6, apoio: true },
+  65: { nome: 'Vaso sanitário', ic: '🚽', tipo: 'vaso_sanitario', prof: 0.65 },
+  69: { nome: 'Banco', ic: '🪑', tipo: 'banqueta', prof: 0.45 },
+  70: { nome: 'Bancada', ic: '🧱', tipo: 'balcao_cozinha', prof: 0.6, apoio: true },
+  71: { nome: 'Fogão', ic: '🔥', tipo: 'fogao', prof: 0.6 },
+  73: { nome: 'Ilha de cozinha', ic: '🧱', tipo: 'balcao_cozinha', prof: 0.9, apoio: true },
+  75: { nome: 'Cadeira giratória', ic: '🪑', tipo: 'cadeira_escritorio', prof: 0.6 },
+  97: { nome: 'Pufe', ic: '🟫', tipo: 'puff', prof: 0.6 },
+  99: { nome: 'Bufê', ic: '🗄️', tipo: 'aparador', prof: 0.5, apoio: true },
+  107: { nome: 'Lavadora', ic: '🧺', tipo: 'geladeira', prof: 0.6 },
+  110: { nome: 'Banqueta', ic: '🪑', tipo: 'banqueta', prof: 0.45 },
+};
+// Regiões de móvel na imagem (componentes conectados de uma mesma classe) que ENCOSTAM no chão:
+// devolve, em coordenadas 0..1 da imagem, as bordas esquerda/direita, o "pé" (onde toca o chão) e o topo.
+// a rede às vezes mistura sofá/cadeira/poltrona (ou mesa/mesa de centro) no mesmo móvel: juntamos por "família"
+const FAMILIA = { 19: 'assento', 23: 'assento', 30: 'assento', 31: 'assento', 69: 'assento', 75: 'assento', 97: 'assento', 110: 'assento', 15: 'mesa', 64: 'mesa', 33: 'mesa' };
+const fam = c => FAMILIA[c] || 'c' + c;
+export function moveis(r, minArea = 0.004) {
+  const { mapa, W, H } = r, visto = new Uint8Array(W * H), out = [];
+  for (let i0 = 0; i0 < W * H; i0++) {
+    if (visto[i0] || !MOVEIS[mapa[i0]]) continue;
+    const f0 = fam(mapa[i0]), fila = [i0], pix = [], votos = {}; visto[i0] = 1;
+    while (fila.length) {
+      const i = fila.pop(), x = i % W, y = (i / W) | 0; pix.push(i); votos[mapa[i]] = (votos[mapa[i]] || 0) + 1;
+      for (const j of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1])
+        if (j >= 0 && !visto[j] && MOVEIS[mapa[j]] && fam(mapa[j]) === f0) { visto[j] = 1; fila.push(j); }
+    }
+    if (pix.length < W * H * minArea) continue;
+    const cls = +Object.entries(votos).sort((a, b) => b[1] - a[1])[0][0];
+    let x0 = W, x1 = 0, y0 = H; const fundo = new Map(), alto = new Map();
+    for (const i of pix) { const x = i % W, y = (i / W) | 0; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); fundo.set(x, Math.max(fundo.get(x) ?? -1, y)); alto.set(x, Math.min(alto.get(x) ?? H, y)); }
+    if (x1 - x0 < 2) continue;
+    // colunas em que logo abaixo do móvel tem chão: é ali que ele está apoiado
+    const pes = [...fundo].filter(([x, y]) => y < H - 1 && [1, 2, 3].some(d => y + d < H && CHAO.has(mapa[(y + d) * W + x]))).sort((a, b) => a[0] - b[0]);
+    if (pes.length < Math.max(2, (x1 - x0 + 1) * 0.25)) continue; // não toca o chão (TV, quadro, objeto em cima de outro)
+    const ys = pes.map(p => p[1]).sort((a, b) => a - b), base = ys[ys.length >> 1];
+    const meio = [...alto].filter(([x]) => x > x0 + (x1 - x0) * 0.25 && x < x1 - (x1 - x0) * 0.25).map(p => p[1]).sort((a, b) => a - b);
+    const topo = meio.length ? meio[meio.length >> 1] : y0;
+    out.push({ cls, ...MOVEIS[cls], grupo: FAMILIA[cls] || null, u0: x0 / W, u1: (x1 + 1) / W, uc: (pes[0][0] + pes[pes.length - 1][0] + 1) / 2 / W, ub0: pes[0][0] / W, ub1: (pes[pes.length - 1][0] + 1) / W, vBase: (base + 1) / H, vTopo: topo / H, area: pix.length / (W * H) });
+  }
+  return out;
+}

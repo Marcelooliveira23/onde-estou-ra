@@ -34,6 +34,8 @@
   .giro-linha input { flex: 1; accent-color: #2563eb; }
   .giro-linha b { min-width: 40px; text-align: right; font-size: 14px; }
   #btnMedidas.ligado { background: #0f172a; color: #fff; }
+  #barra.compacta #catalogo, #barra.compacta .decor-rodape { display: none; }
+  #btnIA { margin-right: 6px; } #btnIA.ligado { background: #7c3aed; color: #fff; border-color: #7c3aed; }
   .ficha { display: flex; gap: 10px; align-items: center; }
   .ficha img { width: 62px; height: 62px; object-fit: cover; border-radius: 12px; background: #f1ede6; flex: none; }
   .ficha b { display: block; font-size: 15px; }
@@ -82,7 +84,7 @@
 
   <div id="barra" hidden>
     <div class="decor-cabeca"><b>🪄 Decorar</b><span id="conta" class="decor-conta"></span>
-      <button id="btnSuperficie" class="mini-btn" title="Procurar outra superfície">＋ superfície</button></div>
+      <button id="btnIA" class="mini-btn" title="IA: reconhecer a mobília que já existe">🤖 IA</button><button id="btnSuperficie" class="mini-btn" title="Procurar outra superfície">＋ superfície</button></div>
     <div id="catalogo"></div>
     <div id="edicao" class="decor-edicao" hidden>
       <div class="giro-linha"><button id="btnGirarE" title="girar 15° para a esquerda">↺</button><input id="faixaGiro" type="range" min="0" max="359" step="1" value="0" aria-label="giro"><button id="btnGirar" title="girar 15° para a direita">↻</button><b id="grausTxt">0°</b></div>

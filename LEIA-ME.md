@@ -136,11 +136,17 @@ No GitHub, abra o arquivo (ex.: `config.js`) → ícone ✏️ → edite → **C
 
 ---
 
+## 🤖 Cômodo que já tem móveis: a IA reconhece a mobília
+- **Decorar:** toque em **🤖 IA** no painel. A rede neural (a mesma do Mapear, rodando no celular) reconhece **sofá, mesa, mesa de centro, cama, cadeira, poltrona, cômoda, estante, armário, escrivaninha, guarda-roupa, balcão, geladeira, fogão, vaso sanitário…** e desenha uma caixa amarela com nome e largura. O tampo de mesas, cômodas, estantes e balcões vira **superfície de apoio**: escolha um enfeite (vaso, porta-retrato, luminária…) e **arraste até em cima do móvel**: ele fica apoiado no tampo, na altura certa.
+- **Como mede:** o "pé" do móvel na imagem (onde encosta no chão) vira distância pela mesma trigonometria; o topo, cruzado com um plano vertical (na borda de trás do tampo, quando o celular está mais alto que o móvel), vira a altura. No teste: sofá 1,85 × 0,94 m (real 2,10 × 0,90), mesa de centro com 0,40 m de altura (real 0,39).
+- **Mapear:** com a IA ligada, os móveis vistos em 3 ou mais quadros entram na planta como **móveis existentes** (hachurados), alinhados às paredes. No **🥽 VR** eles aparecem como móveis da casa e o **✨ Mobiliar sozinho** coloca **só os enfeites**: vaso em cima da mesa, luminária na escrivaninha, quadro acima do sofá, tapete, planta, cortina e lustre.
+- Limites honestos: a IA às vezes confunde parecidos (poltrona × cadeira) ou vê um móvel que não existe; no VR dá para apagar ou trocar.
+
 ## 🛒 Colocar um móvel como nas lojas (modo Decorar, sem placa)
 1. Escolha o móvel: aparece a **ficha do produto** (foto, **L × P × A em cm**, opções de cor).
-2. O móvel aparece **"fantasma"** no **círculo da mira** (1/3 da tela, acima do painel). Mire o lugar no chão (ou na parede, para quadros).
-3. **Dois dedos giram** antes de colocar. Toque em **📍 Colocar aqui** (ou toque direto no lugar).
-4. Depois de colocado: **arraste** para mover; **gire 360°** com dois dedos ou pela **barra de graus** (↺ ↻ de 15 em 15°; o giro "gruda" em 0°, 45°, 90°…); **pinça** ou − + para o tamanho; **📏** mostra as medidas em cima do objeto; **🎨** troca a cor; **⧉** duplica; **🗑️** remove.
+2. **Toque e arraste o dedo** até o lugar: o móvel "fantasma" segue o dedo e **fica onde você soltar** (no chão, na parede ou em cima de um móvel reconhecido). Ou mire com o círculo e toque em **📍 Colocar aqui**. O catálogo se recolhe para a tela ficar livre.
+3. **Dois dedos giram** antes de colocar.
+4. Depois de colocado: **arraste** para mover; **gire 360° pela bolinha azul do anel** em volta do objeto, com dois dedos ou pela **barra de graus** (↺ ↻ de 15 em 15°; o giro "gruda" em 0°, 45°, 90°…); **pinça** ou − + para o tamanho; **📏** mostra as medidas em cima do objeto; **🎨** troca a cor; **⧉** duplica; **🗑️** remove.
 5. No **🥽 VR** é igual, e ainda tem **🧲 encostar** (o móvel vai de costas para a parede mais próxima, alinhado), **🎯 ver** (a câmera vai até o móvel) e **⬇️ vista de cima** (a casa inteira, para arrumar com precisão).
 
 ## 🎬 Gravar o vídeo com a sua narração

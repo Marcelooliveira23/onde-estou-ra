@@ -405,7 +405,7 @@ let IA = null, iaOcupada = false, tIA = 0, verIA = true, iaAuto = false;
 const ia = { bins: Array.from({ length: 180 }, () => []), n: 0, poli: null, ms: 0 };
 const camFoto = new THREE.PerspectiveCamera(), v3 = new THREE.Vector3();
 const iaCv = $('iaMapa'), iaCtx = iaCv.getContext('2d');
-function zerarIA() { ia.bins.forEach(b => { b.length = 0; }); ia.n = 0; ia.poli = null; iaAuto = false; iaCtx.clearRect(0, 0, iaCv.width, iaCv.height); }
+function zerarIA() { ia.bins.forEach(b => { b.length = 0; }); ia.n = 0; ia.poli = null; iaAuto = false; ia.moveis = []; iaCtx.clearRect(0, 0, iaCv.width, iaCv.height); }
 async function ligarIA() {
   const chip = $('iaChip'); chip.hidden = false; chip.textContent = '🤖 Baixando a IA…';
   try {
@@ -442,6 +442,7 @@ async function cicloIA(t) {
       bin.push({ x: o.x + x, z: o.z + z, d, tipo: p.tipo }); if (bin.length > 15) bin.shift();
       ia.n++;
     }
+    for (const m of IA.moveis(r)) medirMovelMapa(m); // 🛋️ a mobília que já existe no cômodo
     const antes = ia.poli && ia.poli.cantos.length;
     ia.poli = poligonoIA(cm);
     if (verIA) { iaCv.width = 96; iaCv.height = Math.round(96 * H / W); IA.pintarMapa(r, iaCtx, iaCv.width, iaCv.height); }
@@ -451,6 +452,29 @@ async function cicloIA(t) {
       iaAuto = true; aviso('🤖 Volta completa: <b>a IA fechou a planta</b>', '#7c3aed'); narrar('Volta completa: com os rodapés achados pela IA em todas as direções, o app encontrou as <b>4 paredes</b> sozinho, sem nenhum toque.'); setTimeout(() => { if (estado.etapa === 'cantos' && estado.atual === cm) concluir(); }, 700);
     }
   } catch (e) { console.warn(e); } finally { iaOcupada = false; }
+}
+// 🛋️ Móvel existente: o "pé" (onde encosta no chão) vira um ponto da planta pela mesma trigonometria;
+// o topo, cruzado com um plano vertical na frente do móvel, dá a altura. Média de vários quadros.
+function raioChao(u, v) {
+  v3.set(u * 2 - 1, 1 - v * 2, 0.5).unproject(camFoto).sub(camFoto.position).normalize(); if (v3.y > -0.06) return null;
+  const k = casa.h / -v3.y; return { x: camFoto.position.x + v3.x * k, z: camFoto.position.z + v3.z * k };
+}
+function medirMovelMapa(m) {
+  const B = raioChao(m.uc, m.vBase), L = raioChao(m.ub0, m.vBase), R = raioChao(m.ub1, m.vBase); if (!B || !L || !R) return;
+  const C = camFoto.position, dd = Math.hypot(B.x - C.x, B.z - C.z); if (dd > 6 || dd < 0.4) return;
+  const n = { x: (C.x - B.x) / dd, z: (C.z - B.z) / dd };
+  const t = new THREE.Vector3(m.uc * 2 - 1, 1 - m.vTopo * 2, 0.5).unproject(camFoto).sub(C).normalize();
+  const den = t.x * n.x + t.z * n.z; if (Math.abs(den) < 1e-3) return;
+  const hF = casa.h + t.y * (((B.x - C.x) * n.x + (B.z - C.z) * n.z) / den), Tr = { x: B.x - n.x * m.prof, z: B.z - n.z * m.prof };
+  const hT = casa.h + t.y * (((Tr.x - C.x) * n.x + (Tr.z - C.z) * n.z) / den);
+  const h = hT < casa.h - 0.05 ? hT : hF, w = dist(L, R); // celular mais alto que o móvel: o topo na imagem é a borda de trás
+  if (!(h > 0.25 && h < 2.6) || w < 0.3 || w > 4) return;
+  if (m.grupo === 'assento' && w >= 1.25) Object.assign(m, IA.MOVEIS[23], { cls: 23 }); // assento largo = sofá
+  const c = { x: B.x - n.x * m.prof / 2, z: B.z - n.z * m.prof / 2 };
+  let d = ia.moveis.find(x => x.cls === m.cls && dist(x, c) < 0.75);
+  if (!d) { d = { cls: m.cls, nome: m.nome, ic: m.ic, tipo: m.tipo, apoio: !!m.apoio, x: c.x, z: c.z, w, h, p: m.prof, rot: Math.atan2(n.x, n.z), n: 0 }; ia.moveis.push(d); }
+  const a = 1 / Math.min(d.n + 1, 6); d.x += (c.x - d.x) * a; d.z += (c.z - d.z) * a; d.w += (w - d.w) * a; d.h += (h - d.h) * a; d.n++;
+  if (d.n === 2) narrar(`🤖 A IA reconheceu um(a) <b>${d.nome.toLowerCase()}</b> (${fmt(d.w)} m × ${fmt(d.h)} m de altura): ele entra na planta e na casa VR como <b>móvel existente</b>.`, 'mv-' + d.cls);
 }
 function distSeg(p, a, b) { const e = sub(b, a), L2 = dot(e, e) || 1e-9, t = Math.max(0, Math.min(1, dot(sub(p, a), e) / L2)); return dist(p, add(a, mul(e, t))); }
 // Casas têm paredes retas e em ângulo reto. Em cada um dos 4 lados, a parede é a reta onde MUITAS
@@ -615,12 +639,14 @@ function alinhar(cm) { // emenda: a porta de entrada coincide com a porta do out
   if (cm.sessao === src.sessao && Math.abs(d) > 35 * d2r) d = 0; // mesma sessão: o giroscópio já está certo
   const T = sub(PA, PB), mover = p => add(rot2(p, d, PB), T);
   cm.cantos = cm.cantos.map(mover); cm.aberturas.forEach(a => { a.p = mover(a.p); }); cm.origem = mover(cm.origem);
+  (cm.existentes || []).forEach(e => { Object.assign(e, mover(e)); e.rot += d; });
   estado.giro += d;
 }
 function endireitar(cm) { // 1º cômodo: paredes alinhadas com a tela (planta "reta")
   let d = anguloDominante(cm.cantos); d = ((d + Math.PI / 4) % (Math.PI / 2) + Math.PI / 2) % (Math.PI / 2) - Math.PI / 4;
   const o = cm.origem, mover = p => rot2(p, d, o);
   cm.cantos = cm.cantos.map(mover); cm.aberturas.forEach(a => { a.p = mover(a.p); });
+  (cm.existentes || []).forEach(e => { Object.assign(e, mover(e)); e.rot += d; });
   estado.giro += d;
 }
 function concluir() {
@@ -630,7 +656,15 @@ function concluir() {
     for (const a of ia.poli.aberturas) if (!cm.aberturas.some(b => dist(b.p, a.p) < 0.6)) cm.aberturas.push({ id: novoId(), tipo: a.tipo, p: a.p, larg: a.larg, ia: true });
   }
   if (cm.cantos.length < 3) return;
+  if (ia.moveis && ia.moveis.length) cm.existentes = ia.moveis.filter(d => d.n >= 3 && (d.w >= 0.4 || d.h >= 0.4) && dentro(d, cm.cantos)).map(({ cls, nome, ic, tipo, apoio, x, z, w, h, p, rot }) => ({ cls, nome, ic, tipo, apoio, x, z, w: +w.toFixed(2), h: +h.toFixed(2), p, rot }));
   cm.cantos = esquadrejar(cm.cantos);
+  if (cm.existentes) { // móvel real fica alinhado com as paredes: o giro "gruda" de 90 em 90° na direção das paredes
+    const dom = anguloDominante(cm.cantos);
+    for (const e of cm.existentes) {
+      const fi = Math.atan2(Math.cos(e.rot), Math.sin(e.rot)), k = Math.round((fi - dom) / (Math.PI / 2)), f2 = dom + k * Math.PI / 2;
+      e.rot = Math.atan2(Math.cos(f2), Math.sin(f2));
+    }
+  }
   const sug = sugerirJanelas(cm);
   encaixar(cm); cm.fechado = true;
   if (cm.aberturas.some(a => a.entrada)) alinhar(cm);
@@ -642,7 +676,7 @@ function concluir() {
 function refazer() {
   const cm = estado.atual; if (!cm || !['cantos', 'resumo'].includes(estado.etapa)) return;
   if (casa.comodos.some(c => c !== cm && c.aberturas.some(a => a.liga && a.liga.c === cm.id && !a.entrada))) return aviso('Já tem cômodo ligado a este', '#b45309');
-  cm.cantos = []; cm.fechado = false;
+  cm.cantos = []; cm.fechado = false; delete cm.existentes;
   cm.aberturas = cm.aberturas.filter(a => a.entrada); cm.aberturas.forEach(a => { delete a.parede; delete a.t; });
   zerarVolta(); estado.etapa = 'cantos'; salvar(); sujar(); ui();
 }
@@ -768,7 +802,8 @@ function desenharPlanta(g, W, H, v, op = {}) {
   const caminho = c => { g.beginPath(); c.forEach((p, i) => (i ? g.lineTo(X(p), Y(p)) : g.moveTo(X(p), Y(p)))); };
   const fechados = casa.comodos.filter(c => c.fechado && c.cantos.length >= 3);
   for (const cm of fechados) { caminho(cm.cantos); g.closePath(); g.fillStyle = cm.cor; g.fill(); }
-  if (op.moveis) desenharMoveis(g, X, Y, v.esc, k);
+  if (op.moveis) { desenharExistentes(g, X, Y, v.esc, k); desenharMoveis(g, X, Y, v.esc, k); }
+  if (op.vivo && estado.etapa === 'cantos' && ia.moveis) for (const d of ia.moveis.filter(x => x.n >= 2)) caixaMovel(g, d, X, Y, v.esc, k, true);
   for (const cm of fechados) desenharParedes(g, cm, X, Y, v.esc, k);
   const at = estado.atual;
   if (op.vivo && at && !at.fechado && estado.etapa === 'cantos' && ia.n) { // o que a IA achou: pontos e paredes
@@ -841,6 +876,22 @@ function desenharPlanta(g, W, H, v, op = {}) {
   }
   g.restore();
 }
+// móvel que JÁ EXISTIA (reconhecido pela IA): retângulo hachurado em marrom
+function caixaMovel(g, d, X, Y, esc, k, vivo) {
+  const c = Math.cos(d.rot || 0), s = Math.sin(d.rot || 0), u = { x: c, z: -s }, f = { x: s, z: c }, a = d.w / 2, b = d.p / 2;
+  const P = (i, j) => ({ x: d.x + u.x * a * i + f.x * b * j, z: d.z + u.z * a * i + f.z * b * j }), R = [P(-1, -1), P(1, -1), P(1, 1), P(-1, 1)];
+  g.save(); g.beginPath(); R.forEach((p, i) => (i ? g.lineTo(X(p), Y(p)) : g.moveTo(X(p), Y(p)))); g.closePath();
+  g.fillStyle = vivo ? 'rgba(249,115,22,.25)' : 'rgba(180,120,60,.16)'; g.fill(); g.clip();
+  g.strokeStyle = 'rgba(146,64,14,.45)'; g.lineWidth = 1 * k;
+  for (let t = -60; t < 60; t += 0.18) { const p0 = P(-1 + t, -1), p1 = P(1 + t, 1); g.beginPath(); g.moveTo(X(p0), Y(p0)); g.lineTo(X(p1), Y(p1)); g.stroke(); }
+  g.restore();
+  g.beginPath(); R.forEach((p, i) => (i ? g.lineTo(X(p), Y(p)) : g.moveTo(X(p), Y(p)))); g.closePath(); g.strokeStyle = '#92400e'; g.lineWidth = 1.4 * k; g.stroke();
+  if (d.w * esc > 40 * k) { const q = P(0, 0); g.font = `700 ${8.5 * k}px -apple-system, Segoe UI, Arial`; g.fillStyle = '#7c2d12'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(`${d.ic || ''} ${d.nome}${vivo ? '' : ' (existente)'}`, X(q), Y(q)); }
+}
+function desenharExistentes(g, X, Y, esc, k) {
+  const vr = moveisSalvos();
+  for (const cm of casa.comodos) for (const d of cm.existentes || []) if (!vr.some(x => x.existente && x.origem === cm.id)) caixaMovel(g, d, X, Y, esc, k, false);
+}
 // móveis colocados no modo 🥽 VR aparecem na planta (vista de cima, em escala)
 function moveisSalvos() {
   const f = casa.comodos.filter(c => c.fechado && c.cantos.length >= 3); if (!f.length) return [];
@@ -849,6 +900,7 @@ function moveisSalvos() {
 function desenharMoveis(g, X, Y, esc, k) {
   for (const d of moveisSalvos()) {
     if (d.local === 'teto' || d.local === 'parede' || d.w == null) continue;
+    if (d.existente) { caixaMovel(g, { ...d, nome: d.nome || '' }, X, Y, esc, k, false); continue; }
     const c = Math.cos(d.rot || 0), s = Math.sin(d.rot || 0), u = { x: c, z: -s }, f = { x: s, z: c }, a = d.w / 2, b = d.p / 2;
     const P = (i, j) => ({ x: d.x + u.x * a * i + f.x * b * j, z: d.z + u.z * a * i + f.z * b * j });
     const R = [P(-1, -1), P(1, -1), P(1, 1), P(-1, 1)];

@@ -51,7 +51,10 @@ Toque em **🪄 Decorar o ambiente** → **Começar**. Aponte para o chão e mex
 Escolha **Sala → Sofá moderno**. Aparece a **ficha do produto** com as medidas, e o sofá "fantasma" segue o círculo da mira. Gire com **dois dedos** e toque em **📍 Colocar aqui**. Ande em volta.
 > "Igual ao **'Ver no seu ambiente'** das lojas: escolho o sofá, vejo a ficha com as **medidas reais**, miro o lugar e coloco. Ele fica **parado no lugar** mesmo quando eu ando em volta. Com dois dedos eu **giro 360°**, ou ajusto pela barra, grau por grau, e o app mostra as **medidas em centímetros** em cima do objeto."
 
-Coloque uma **Planta grande** e a **Mesa lateral**; use **⧉** para duplicar e **🎨** para trocar a cor.
+Coloque uma **Planta grande** e a **Mesa lateral**; use **⧉** para duplicar e **🎨** para trocar a cor. Gire pela **bolinha azul do anel**.
+
+**Num cômodo que já tem móveis:** toque em **🤖 IA** e mostre o sofá e a mesa: aparecem as caixas amarelas com o nome. Escolha **Decoração → Vaso** e **arraste até em cima da mesa**.
+> "Se a sala já é mobiliada, a **IA reconhece os móveis**: o sofá, a mesa… e calcula a altura do tampo. Aí eu só coloco os **enfeites**: o vaso fica apoiado em cima da mesa de verdade."
 
 ### 4. Quadro na parede (1:25–1:55)
 Toque em **＋ superfície**, aponte para a parede e mexa devagar. Escolha **Parede → Quadro famoso** e toque na parede. Toque em **🎨 arte**.

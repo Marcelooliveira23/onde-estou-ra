@@ -73,6 +73,12 @@ let todos = {};
 try { todos = JSON.parse(localStorage.getItem(CHAVE_VR)) || {}; } catch (e) { todos = {}; }
 const dados = todos[CASA_ID] || (todos[CASA_ID] = { itens: [], acab: {} });
 dados.itens = dados.itens.filter(d => TIPOS[d.tipo]);
+// 🛋️ móveis que já existem (reconhecidos pela IA no Mapear) entram como itens "existentes"
+dados.importados = dados.importados || {};
+for (const cm of comodos) if (cm.existentes && cm.existentes.length && !dados.importados[cm.id]) {
+  for (const e of cm.existentes) if (TIPOS[e.tipo]) dados.itens.push({ id: Math.random().toString(36).slice(2, 9), tipo: e.tipo, v: 0, x: e.x, y: 0, z: e.z, rot: e.rot, w: e.w, p: e.p, h: e.h, existente: true, origem: cm.id });
+  dados.importados[cm.id] = true;
+}
 const salvar = () => { try { localStorage.setItem(CHAVE_VR, JSON.stringify(todos)); } catch (e) { /* modo privado */ } };
 function acabDe(cm, i) {
   if (!dados.acab[cm.id]) {
@@ -499,10 +505,11 @@ function tocar(e) {
 function selecionar(w) {
   desselecionar(); sel = w;
   helper = new THREE.BoxHelper(w, '#facc15'); helper.material.depthTest = false; helper.renderOrder = 20; cena.add(helper);
-  const t = TIPOS[w.userData.d.tipo], v = w.userData.d.v || 0;
+  const t = TIPOS[w.userData.d.tipo], v = w.userData.d.v || 0, jaExiste = w.userData.d.existente ? ' <small>· 🛋️ já existe</small>' : '';
   const dd = w.userData.d, cm = x => Math.round(x * 100), alt = dd.h || t.dim[1];
-  $('selNome').innerHTML = `${t.nome}${t.nomesVar && t.nomesVar[v] ? ` <small>· ${t.nomesVar[v]}</small>` : ''}<br><small>📏 ${t.local === 'parede' ? `${cm(dd.w || t.dim[0])} × ${cm(alt)} cm` : `L ${cm(dd.w || t.dim[0])} × P ${cm(dd.p || t.dim[2])} × A ${cm(alt)} cm`} · ${t.local === 'parede' ? 'arraste pela parede' : 'arraste para mover · 2 dedos giram'}</small>`;
+  $('selNome').innerHTML = `${t.nome}${jaExiste}${t.nomesVar && t.nomesVar[v] ? ` <small>· ${t.nomesVar[v]}</small>` : ''}<br><small>📏 ${t.local === 'parede' ? `${cm(dd.w || t.dim[0])} × ${cm(alt)} cm` : `L ${cm(dd.w || t.dim[0])} × P ${cm(dd.p || t.dim[2])} × A ${cm(alt)} cm`} · ${t.local === 'parede' ? 'arraste pela parede' : 'arraste para mover · 2 dedos giram'}</small>`;
   $('selEncostar').hidden = t.local !== 'chao'; sincronizarGiro();
+  narrar(`<b>${t.nome}</b> selecionado: arraste para mover e gire <b>360°</b> pela <b>bolinha azul do anel</b>, com dois dedos ou pela barra.`, 'vr-sel');
   $('selVariar').hidden = t.variantes < 2;
   $('painelNormal').hidden = true; $('selecao').hidden = false; posJoy();
 }
@@ -547,6 +554,28 @@ function animarVoo(t) {
   if (!voo) return; const k = Math.min(1, (t - voo.t0) / 600), e = k * k * (3 - 2 * k);
   ctrl.target.lerpVectors(voo.de, voo.para, e); camCasa.position.lerpVectors(voo.cDe, voo.cPara, e); if (k >= 1) voo = null;
 }
+// 🔄 anel de giro: arraste a bolinha azul em volta do móvel (360°)
+const anelVr = new THREE.Group(), aroVr = new THREE.Mesh(new THREE.RingGeometry(0.93, 1, 72), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthTest: false }));
+const pegaVr = new THREE.Mesh(new THREE.SphereGeometry(0.09, 20, 14), new THREE.MeshBasicMaterial({ color: '#2563eb', depthTest: false }));
+aroVr.rotation.x = -Math.PI / 2; aroVr.renderOrder = pegaVr.renderOrder = 20; anelVr.add(aroVr, pegaVr); anelVr.visible = false; cena.add(anelVr);
+let girandoVr = false; const planoGiro = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), pGiro = new THREE.Vector3();
+function atualizarAnelVr() {
+  const d = sel && sel.userData.d, ok = d && TIPOS[d.tipo].local === 'chao' && modo !== 'oculos';
+  anelVr.visible = !!ok; if (!ok) return;
+  const R = Math.max(d.w || 0.6, d.p || 0.6) / 2 + 0.25, th = d.rot || 0;
+  anelVr.position.set(d.x, (d.y || 0) + 0.02, d.z); aroVr.scale.setScalar(R); pegaVr.position.set(Math.sin(th) * R, 0, Math.cos(th) * R);
+}
+cv.addEventListener('pointerdown', e => {
+  if (!anelVr.visible || dedosVr.size > 1) return; raio(e);
+  if (ray.intersectObjects([aroVr, pegaVr], false).length) { girandoVr = true; ctrl.enabled = false; cv.setPointerCapture(e.pointerId); e.stopImmediatePropagation(); }
+}, true);
+cv.addEventListener('pointermove', e => {
+  if (!girandoVr || !sel) return; raio(e); const d = sel.userData.d; planoGiro.constant = -((d.y || 0) + 0.02);
+  if (!ray.ray.intersectPlane(planoGiro, pGiro)) return;
+  let th = Math.atan2(pGiro.x - d.x, pGiro.z - d.z); const g = ((th * 180 / Math.PI) % 360 + 360) % 360, perto = Math.round(g / 45) * 45; if (Math.abs(g - perto) < 4) th = perto * Math.PI / 180;
+  definirGiro(d, th); posItem(sel); sincronizarGiro(); e.stopImmediatePropagation();
+}, true);
+addEventListener('pointerup', () => { if (girandoVr) { girandoVr = false; ctrl.enabled = true; fimTorcao = performance.now(); salvarDepois(); } }, true);
 // dois dedos no móvel selecionado: giram o móvel (e não a câmera)
 const dedosVr = new Map(); let torcer = null, fimTorcao = 0;
 cv.addEventListener('pointerdown', e => {
@@ -644,9 +673,28 @@ function planejar(cm) {
   const oposto = (tr, lista2) => lista2.filter(t => t !== tr && dot(t.w.n, tr.w.n) < -0.9).sort((a, b) => b.L - a.L)[0];
   const outro = (lista2, ...nao) => lista2.find(t => !nao.some(x => x && x.i === t.i));
   const baixos = trechos(cm, false), altos = trechos(cm, true);
+  const existentes = dados.itens.filter(d => d.existente && noComodo(d) === cm);
+  if (existentes.length) { // o cômodo JÁ É MOBILIADO: só enfeites (em cima dos móveis, na parede e nos cantos)
+    const ENFEITE = { mesa: 'vaso_branco', mesa_centro: 'vaso_alto', aparador: 'vaso_latao', comoda: 'porta_retrato', escrivaninha: 'luminaria_mesa', estante: 'vaso_branco', balcao: null };
+    const paraParede = q => { // ponto atrás do móvel → na parede mais próxima (se estiver perto)
+      let m = null; for (let i = 0; i < cm.cantos.length; i++) { const w = parede(cm, i), t = Math.max(0, Math.min(1, dot(sub(q, w.a), w.u) / w.L)), p = add(w.a, mul(w.u, t * w.L)), di = dist(q, p); if (!m || di < m.di) m = { p, w, di }; }
+      return m && m.di < 0.45 ? { ...add(m.p, mul(m.w.n, 0.006)), rot: Math.atan2(m.w.n.x, m.w.n.z) } : null;
+    };
+    for (const d of existentes) {
+      const chave = Object.keys(ENFEITE).find(k => d.tipo.startsWith(k)), enf = chave && ENFEITE[chave];
+      if (enf) novos.push({ tipo: enf, v: 0, x: d.x, y: d.h || TIPOS[d.tipo].dim[1], z: d.z, rot: d.rot, ...tam(enf) }); // em cima do tampo
+      if (/sofa|cama|aparador|comoda|escrivaninha/.test(d.tipo)) {
+        const f = { x: Math.sin(d.rot), z: Math.cos(d.rot) }, q = paraParede(add(d, mul(f, -(d.p / 2 + 0.05))));
+        if (q) novos.push({ tipo: /cama/.test(d.tipo) ? 'quadro' : 'moldura_paisagem', v: /cama/.test(d.tipo) ? 4 : 2, x: q.x, y: Math.min((d.h || 0.8) + 0.65, PD - 0.4), z: q.z, rot: q.rot, ...tam('quadro') });
+      }
+      if (/sofa/.test(d.tipo)) { naFrente(d, 'tapete', d.p / 2 + 0.7, 0, 0, { v: 1 }); naFrente(d, 'luminaria_piso', 0, 0, d.w / 2 + 0.3) || naFrente(d, 'luminaria_piso', 0, 0, -(d.w / 2 + 0.3)); }
+      if (/cama/.test(d.tipo)) naFrente(d, 'tapete', d.p / 2 + 0.25, 0, 0, { v: 3 });
+    }
+    naParede(baixos[0], 'planta', 1) || naParede(baixos[0], 'planta', 0); naParede(baixos[1], 'suculenta', 0.5);
+  }
   // tenta primeiro paredes inteiras (sem janela) e depois as outras, até o móvel caber
   const primeiro = (min, f) => { for (const t of [...altos.filter(t => t.L >= min), ...baixos]) { const d = f(t); if (d) return [d, t]; } return [null, baixos[0]]; };
-  if (/sala|estar|living/.test(nome)) {
+  if (existentes.length) { /* já mobiliado: só os enfeites (acima) */ } else if (/sala|estar|living/.test(nome)) {
     const [sofa, tr] = primeiro(2.3, t => naParede(t, t.L >= 2.2 ? 'sofa_moderno' : 'sofa_classico', 0.5));
     const tv = sofa && naParede(oposto(tr, altos) || oposto(tr, baixos), 'rack_tv', sofa);
     if (sofa) {
@@ -708,7 +756,7 @@ function noComodo(d) { return comodos.find(c => dentro(d, c.cantos)); }
 function mobiliarSozinho(lista) {
   let n = 0;
   for (const cm of lista) {
-    dados.itens.filter(d => noComodo(d) === cm).forEach(d => { dados.itens.splice(dados.itens.indexOf(d), 1); });
+    dados.itens.filter(d => noComodo(d) === cm && !d.existente).forEach(d => { dados.itens.splice(dados.itens.indexOf(d), 1); }); // os móveis que já existem ficam
     for (const d of planejar(cm)) { d.id = Math.random().toString(36).slice(2, 9); dados.itens.push(d); n++; }
   }
   itensG.clear(); dados.itens.forEach(criarItem); desselecionar(); salvar();
@@ -776,7 +824,7 @@ function ajustar() {
 addEventListener('resize', ajustar);
 if (new URLSearchParams(location.search).has('sim')) document.body.classList.add('sim'); // simulador: sem botões
 ajustar(); trocarModo(new URLSearchParams(location.search).get('modo') || 'casa');
-if (!dados.itens.length && !dados.autoFeito && !new URLSearchParams(location.search).has('vazia')) { dados.autoFeito = true; mobiliarSozinho(comodos); } // 1ª vez: já mobiliada
+if (dados.itens.every(d => d.existente) && !dados.autoFeito && !new URLSearchParams(location.search).has('vazia')) { dados.autoFeito = true; mobiliarSozinho(comodos); } // 1ª vez: já mobiliada (ou só os enfeites, se já tem móveis)
 $('carregandoVr').hidden = true;
 ancorarAcima(() => ($('painel').classList.contains('fechado') ? $('painel') : $('painel')));
 narrar(casa.exemplo ? 'Esta é uma <b>casa de exemplo em realidade virtual</b>. Mapeie a sua em 🗺️ Mapear e ela aparece aqui.' : '<b>Realidade virtual:</b> a planta que você mediu com a câmera virou uma casa 3D, com as mesmas medidas.');
@@ -798,6 +846,7 @@ function quadro(t) {
     const c = comodos.find(cc => dentro(eu, cc.cantos)); if (c !== comodoAntes) { comodoAntes = c; textoInfo(); }
   }
   if (helper) helper.update();
+  atualizarAnelVr();
 }
 requestAnimationFrame(quadro);
 

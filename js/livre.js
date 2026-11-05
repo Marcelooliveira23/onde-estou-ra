@@ -174,7 +174,7 @@ function desenhar(t) {
   const agora = new Date();
   for (const it of itens) { const f = it.children[0] && it.children[0].userData.atualizar; if (f) f(agora); }
   for (const p of planos) p.userData.anel.material.opacity = 0.35 + 0.15 * Math.sin(t / 300);
-  atualizarPrevia();
+  atualizarPrevia(); atualizarAnel(); cicloIA(t);
   renderer.render(cena, camera);
   mostrarMedidas();
 }
@@ -295,11 +295,10 @@ $('gl').addEventListener('pointerdown', e => {
   if (dedos.size > 1) return;
   if (!estado.rastreando || !planos.length) return;
   raio(e);
-  if (estado.armado) {
-    const alvo = planoMaisProximo();
-    if (!alvo) { aviso('Toque em cima da superfície encontrada', '#0f172a'); return; }
-    colocar(estado.armado, alvo.g, alvo.p, previa ? previa.rot : 0); estado.armado = null; tirarPrevia(); ui(); return;
+  if (estado.armado) { // o objeto aparece onde o dedo está e acompanha o dedo; solta = fica ali
+    colocando = { id: e.pointerId, ndc: ndc.clone() }; return;
   }
+  if (estado.sel && anel.visible && ray.intersectObjects([anelAro, anelPega], false).length) { girando = true; return; } // anel de giro 360°
   const hits = ray.intersectObjects(itens, true);
   if (hits.length) {
     let o = hits[0].object; while (o && !itens.includes(o)) o = o.parent;
@@ -324,12 +323,27 @@ window.addEventListener('pointermove', e => {
     } else if (previa) previa.rot = giro;
     return;
   }
+  if (colocando && colocando.id === e.pointerId) { raio(e); colocando.ndc.copy(ndc); return; }
+  if (girando && estado.sel) { // gira pelo anel: o ângulo do dedo em volta do objeto
+    raio(e); const o = estado.sel, p = pontoNoPlano(o.parent); if (!p) return;
+    const dx = p.x - o.position.x, dy = noChao(o) ? p.z - o.position.z : p.y - o.position.y;
+    let th = noChao(o) ? Math.atan2(dx, dy) : Math.atan2(-dx, dy);
+    const graus = ((th * 180 / Math.PI) % 360 + 360) % 360, perto = Math.round(graus / 45) * 45;
+    if (Math.abs(graus - perto) < 4) th = perto * Math.PI / 180;
+    girar(o, th); return;
+  }
   if (!arrasto || !estado.rastreando) return;
   raio(e);
-  const p = pontoNoPlano(arrasto.o.parent);
-  if (p) { const y0 = arrasto.o.position.y; arrasto.o.position.copy(p.add(arrasto.d)); if (arrasto.o.parent.userData.chao) arrasto.o.position.y = y0; else arrasto.o.position.z = 0.004; }
+  const g = arrasto.o.parent, sobre = g.userData.chao && TIPOS[arrasto.o.userData.tipo].local === 'chao' && tampos.length ? ray.intersectObjects(tampos.filter(t => t.parent.parent === g), false)[0] : null;
+  if (sobre) { const p = g.worldToLocal(sobre.point.clone()); arrasto.o.position.set(p.x, sobre.object.userData.d.h, p.z); return; } // arrastou para cima de um móvel detectado
+  const p = pontoNoPlano(g);
+  if (p) { arrasto.o.position.copy(p.add(arrasto.d)); if (g.userData.chao) { if (TIPOS[arrasto.o.userData.tipo].local === 'chao' && noChao(arrasto.o)) arrasto.o.position.y = 0; } else arrasto.o.position.z = 0.004; } // saiu de cima do móvel: volta ao chão
 });
-const soltar = e => { dedos.delete(e.pointerId); if (dedos.size < 2) pinca = null; if (!dedos.size) arrasto = null; };
+const soltar = e => {
+  if (colocando && colocando.id === e.pointerId) { colocando = null; if (previa && previa.alvo) colocarNaMira(); else aviso('Arraste até a <b>superfície</b> encontrada', '#0f172a'); }
+  if (girando) { girando = false; if (estado.sel) narrar(`Girado para <b>${Math.round((((girarDe(estado.sel) * 180 / Math.PI) % 360) + 360) % 360)}°</b> pelo anel: arraste a bolinha azul em volta para virar o objeto para qualquer lado.`, 'anel'); }
+  dedos.delete(e.pointerId); if (dedos.size < 2) pinca = null; if (!dedos.size) arrasto = null;
+};
 window.addEventListener('pointerup', soltar);
 window.addEventListener('pointercancel', soltar);
 
@@ -341,13 +355,14 @@ function posicionarNovo(o, tipo, g, p) {
   if (g.userData.chao && TIPOS[tipo].local === 'parede') o.position.y = TIPOS[tipo].dim[1] / 2; // quadro no chão: apoiado, em pé
   if (g.userData.chao && TIPOS[tipo].local === 'teto') o.position.y = 2.55; // lustre/pendente: pendurado no teto, acima do ponto tocado
 }
-function colocar(tipo, g, p, rot = 0) {
+function colocar(tipo, g, p, rot = 0, topo = 0) {
   const o = new THREE.Group();
   const m = Moveis.criar(tipo, 0);
   o.add(m);
   o.userData = { tipo, v: 0, esc: 1 };
   m.userData.pronto.then(() => { o.userData.dims = null; if (estado.sel === o) { caixaSel.setFromObject(o); ui(); } });
   posicionarNovo(o, tipo, g, p); g.add(o); girar(o, rot);
+  if (topo && g.userData.chao && TIPOS[tipo].local === 'chao') o.position.y = topo; // em cima do móvel detectado pela IA
   itens.push(o);
   narrar(`Pronto: <b>${TIPOS[tipo].nome}</b> no lugar, em tamanho real e <b>ancorado</b>: pode andar em volta que ele não sai dali. Dois dedos giram 360°.`, 'colocado-' + tipo);
   g.userData.visuais.forEach(v => { v.visible = false; }); // some o anel depois do 1º objeto
@@ -378,19 +393,20 @@ function ui() {
   document.querySelectorAll('#catalogo .chip').forEach(b => b.classList.toggle('ativo', b.dataset.tipo === estado.armado));
   $('conta').textContent = itens.length ? `${itens.length} objeto${itens.length > 1 ? 's' : ''}` : '';
   $('edicao').hidden = !estado.sel;
+  $('barra').classList.toggle('compacta', !!(estado.armado || estado.sel)); // a tela fica livre para posicionar
   if (estado.procurar && planos.length) dica('🔍 Aponte para a outra superfície (ex.: a <b>parede</b>) e mexa devagar…');
   else if (estado.sel) {
     const t = TIPOS[estado.sel.userData.tipo], leg = estado.sel.children[0].userData.legenda;
     $('btnVariar').hidden = t.variantes < 2; $('btnVariar').textContent = t.gera === 'tapete' ? '🎨 estampa' : t.proc === 'relogio' || t.gera ? '🎨 cor' : '🎨 arte';
 
-    dica(`<b>${t.nome}</b>${leg ? ` · <i>${leg}</i>` : ''}<br><small>Arraste para mover · <b>gire com 2 dedos</b> ou na barra (360°) · pinça ou − + para o tamanho</small>`);
+    dica(`<b>${t.nome}</b>${leg ? ` · <i>${leg}</i>` : ''}<br><small>Arraste para mover · <b>gire pela bolinha azul do anel</b>, com 2 dedos ou na barra (360°) · pinça ou − + para o tamanho</small>`);
     sincronizarGiro();
   }
   else if (estado.armado) { // ficha do produto, como numa loja
     const t = TIPOS[estado.armado], d = t.dim, cm = v => Math.round(v * 100);
     dica(`<div class="ficha"><img src="${t.foto}" alt=""><div><b>${t.nome}</b><small>${t.local === 'parede' ? `${cm(d[0])} × ${cm(d[1])} cm` : `L ${cm(d[0])} × P ${cm(d[2])} × A ${cm(d[1])} cm`}</small><small>${t.cat}${t.variantes > 1 ? ` · ${t.variantes} opções de ${t.gera === 'tapete' ? 'estampa' : t.gera || t.proc === 'relogio' ? 'cor' : 'obra'}` : ''}</small></div></div>
       <div class="ficha-acoes"><button id="btnColocar">📍 Colocar aqui</button><button id="btnCancelarFicha">✕</button></div>
-      <small>Mire o ponto ${t.local === 'parede' ? 'da <b>parede</b>' : 'do <b>chão</b>'} com o círculo e toque em <b>Colocar</b> (ou toque direto no lugar). <b>Dois dedos giram</b> antes de colocar.${t.local === 'parede' && !planos.some(p => !p.userData.chao) ? ' Ainda não achei uma parede: toque em ＋ superfície.' : ''}</small>`); }
+      <small><b>Toque e arraste</b> o dedo até o lugar ${t.local === 'parede' ? 'na <b>parede</b>' : 'no <b>chão</b>'}${t.local === 'chao' && tampos.length ? ' ou <b>em cima de um móvel</b> que a IA reconheceu' : ''}: solte e ele fica ali. Ou mire com o círculo e toque em <b>Colocar</b>. <b>Dois dedos giram</b>.${t.local === 'parede' && !planos.some(p => !p.userData.chao) ? ' Ainda não achei uma parede: toque em ＋ superfície.' : ''}</small>`); }
   else dica('Escolha um item e toque no lugar. Para a <b>parede</b>, toque em <b>＋ superfície</b> e aponte para ela.');
   if (catalogo) catalogo.marcar(estado.armado);
 }
@@ -449,19 +465,27 @@ function atualizarPrevia() {
     tirarPrevia(); const o = new THREE.Group(), m = Moveis.criar(tipo, 0); o.add(m); fantasmear(m); m.userData.pronto.then(() => fantasmear(m));
     previa = { tipo, o, rot: 0 };
   }
-  $('miraLivre').hidden = false;
-  ray.setFromCamera(centroTela, camera);
-  const alvo = planoMaisProximo(); previa.alvo = alvo;
+  $('miraLivre').hidden = !!colocando;
+  ray.setFromCamera(colocando ? colocando.ndc : centroTela, camera);
+  let alvo = null;
+  if (TIPOS[tipo].local === 'chao' && tampos.length) { // em cima de uma mesa/cômoda/estante que a IA reconheceu
+    const h = ray.intersectObjects(tampos, false)[0];
+    if (h) { const g = h.object.parent.parent; alvo = { g, p: g.worldToLocal(h.point.clone()), topo: h.object.userData.d.h }; }
+  }
+  if (!alvo) alvo = planoMaisProximo();
+  previa.alvo = alvo;
   $('miraLivre').classList.toggle('ok', !!alvo);
+  tampos.forEach(t => { t.material.opacity = TIPOS[tipo].local === 'chao' ? (alvo && alvo.topo && t.userData.d.h === alvo.topo ? 0.5 : 0.22) : 0; });
   if (!alvo) { previa.o.visible = false; return; }
   if (previa.o.parent !== alvo.g) alvo.g.add(previa.o);
-  previa.o.rotation.set(0, 0, 0); posicionarNovo(previa.o, tipo, alvo.g, alvo.p);
+  previa.o.rotation.set(0, 0, 0); posicionarNovo(previa.o, tipo, alvo.g, alvo.p); if (alvo.topo) previa.o.position.y = alvo.topo;
   if (alvo.g.userData.chao && Math.abs(previa.o.rotation.x) < 0.01) previa.o.rotation.y = previa.rot; else previa.o.rotation.z = previa.rot;
   previa.o.visible = true;
 }
 function colocarNaMira() {
   if (!previa || !previa.alvo) return aviso('Mire a <b>superfície</b> (círculo verde) e tente de novo', '#0f172a');
-  colocar(estado.armado, previa.alvo.g, previa.alvo.p, previa.rot); estado.armado = null; tirarPrevia(); ui();
+  colocar(estado.armado, previa.alvo.g, previa.alvo.p, previa.rot, previa.alvo.topo || 0); estado.armado = null; tirarPrevia(); ui();
+  tampos.forEach(t => { t.material.opacity = 0; });
 }
 $('dica').addEventListener('click', e => {
   if (e.target.closest('#btnColocar')) colocarNaMira();
@@ -539,6 +563,113 @@ $('btnFoto').onclick = () => {
   window.ULTIMA_FOTO = url;
 };
 
+// ---------- 🔄 ANEL DE GIRO: arraste a bolinha em volta do objeto (360°) ----------
+let colocando = null, girando = false;
+const anel = new THREE.Group(), matAnel = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthTest: false });
+const anelAro = new THREE.Mesh(new THREE.RingGeometry(0.93, 1, 72), matAnel);
+const anelPega = new THREE.Mesh(new THREE.SphereGeometry(0.075, 20, 14), new THREE.MeshBasicMaterial({ color: '#2563eb', depthTest: false }));
+const anelSeta = new THREE.Mesh(new THREE.RingGeometry(0.955, 0.975, 72, 1, 0, 0.6), new THREE.MeshBasicMaterial({ color: '#2563eb', side: THREE.DoubleSide, depthTest: false }));
+anelAro.renderOrder = anelPega.renderOrder = anelSeta.renderOrder = 20; anel.add(anelAro, anelSeta, anelPega); anel.visible = false;
+function atualizarAnel() {
+  const o = estado.sel, ok = o && estado.rastreando && !colocando && (noChao(o) || !o.parent.userData.chao);
+  anel.visible = !!ok; if (!ok) return;
+  if (anel.parent !== o.parent) o.parent.add(anel);
+  const s = o.userData.dims, R = (s ? Math.max(s.x, noChao(o) ? s.z : s.y) / 2 : 0.4) * (o.userData.esc || 1) + 0.18, th = girarDe(o);
+  if (noChao(o)) {
+    anel.position.set(o.position.x, o.position.y + 0.01, o.position.z);
+    anelAro.rotation.set(-Math.PI / 2, 0, 0); anelSeta.rotation.set(-Math.PI / 2, 0, th + Math.PI / 2 - 0.3);
+    anelPega.position.set(Math.sin(th) * R, 0, Math.cos(th) * R);
+  } else {
+    anel.position.set(o.position.x, o.position.y, 0.02);
+    anelAro.rotation.set(0, 0, 0); anelSeta.rotation.set(0, 0, th + Math.PI / 2 - 0.3);
+    anelPega.position.set(-Math.sin(th) * R, Math.cos(th) * R, 0);
+  }
+  anelAro.scale.setScalar(R); anelSeta.scale.setScalar(R);
+}
+
+// ---------- 🤖 IA: reconhece a MOBÍLIA QUE JÁ EXISTE no cômodo ----------
+// A mesma rede neural do Mapear (SegFormer, no celular) acha sofá, mesa, cama, cômoda, estante…
+// O "pé" do móvel na imagem vira um ponto do chão (raio da câmera × plano do chão do SLAM), o topo vira a
+// altura (raio × plano vertical na frente do móvel). O tampo de mesas, cômodas e estantes vira uma
+// superfície de APOIO: o vaso, o porta-retrato ou a luminária ficam EM CIMA do móvel de verdade.
+let IA = null, iaLigada = false, iaOcupada = false, tIA = 0;
+const detectados = [], tampos = [], camFoto = new THREE.PerspectiveCamera(), rc = new THREE.Raycaster(), v2 = new THREE.Vector2();
+async function ligarIA() {
+  if (iaLigada) { iaLigada = false; detectados.forEach(d => d.grupo && d.grupo.parent && d.grupo.parent.remove(d.grupo)); detectados.length = 0; tampos.length = 0; $('btnIA').classList.remove('ligado'); $('btnIA').textContent = '🤖 IA'; return; }
+  $('btnIA').textContent = '🤖 …';
+  try {
+    IA = IA || await import('./ia_paredes.js');
+    await IA.carregar(p => { if (p.status === 'progress' && p.total) $('btnIA').textContent = `🤖 ${Math.round(p.loaded / p.total * 100)}%`; });
+    iaLigada = true; $('btnIA').classList.add('ligado'); $('btnIA').textContent = '🤖 0';
+    narrar('<b>IA ligada:</b> uma rede neural roda no celular e procura a <b>mobília que já existe</b> (sofá, mesa, cama, cômoda…). Mova o celular devagar mostrando os móveis.');
+  } catch (e) { $('btnIA').textContent = '🤖 IA'; aviso('Não consegui carregar a IA (precisa de internet na 1ª vez)', '#b91c1c'); }
+}
+$('btnIA').onclick = ligarIA;
+function noChaoLocal(u, v, g) {
+  rc.setFromCamera(v2.set(u * 2 - 1, 1 - v * 2), camFoto);
+  const pl = new THREE.Plane().setFromNormalAndCoplanarPoint(g.userData.n, g.position), out = new THREE.Vector3();
+  if (!rc.ray.intersectPlane(pl, out) || out.clone().sub(camFoto.position).dot(rc.ray.direction) < 0) return null;
+  return g.worldToLocal(out);
+}
+async function cicloIA(t) {
+  if (!iaLigada || !IA || !IA.pronto() || iaOcupada || t - tIA < 650 || !estado.rastreando || video.readyState < 2) return;
+  const g = planos.find(p => p.userData.chao); if (!g) return;
+  iaOcupada = true; tIA = t; camFoto.copy(camera); camFoto.updateMatrixWorld();
+  try {
+    const vw = video.videoWidth, vh = video.videoHeight, s = Math.max(W / vw, H / vh), sw = W / s, sh = H / s;
+    const r = await IA.segmentar(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh);
+    const mv = IA.moveis(r); window.IA_DEBUG = { classes: [...new Set(r.mapa)].slice(0, 30), mv: mv.map(m => ({ nome: m.nome, u: [m.ub0, m.ub1].map(x => +x.toFixed(2)), v: [m.vTopo, m.vBase].map(x => +x.toFixed(2)) })), rej: [] };
+    for (const m of mv) medirMovel(m, g);
+    mostrarDetectados(g);
+  } catch (e) { console.warn(e); } finally { iaOcupada = false; }
+}
+function medirMovel(m, g) {
+  const B = noChaoLocal(m.uc, m.vBase, g), L = noChaoLocal(m.ub0, m.vBase, g), R = noChaoLocal(m.ub1, m.vBase, g); if (!B || !L || !R) return;
+  const C = g.worldToLocal(camFoto.position.clone()), dist = Math.hypot(B.x - C.x, B.z - C.z); if (dist > 6 || dist < 0.3) return;
+  const n = new THREE.Vector3(C.x - B.x, 0, C.z - B.z).normalize();
+  rc.setFromCamera(v2.set(m.uc * 2 - 1, 1 - m.vTopo * 2), camFoto); // topo: raio × plano vertical na frente do móvel
+  const o = g.worldToLocal(rc.ray.origin.clone()), dir = g.worldToLocal(rc.ray.origin.clone().add(rc.ray.direction)).sub(o).normalize();
+  const den = dir.dot(n); if (Math.abs(den) < 1e-3) return;
+  const hFrente = o.y + dir.y * (B.clone().sub(o).dot(n) / den), tras = B.clone().addScaledVector(n, -m.prof);
+  const hTras = o.y + dir.y * (tras.clone().sub(o).dot(n) / den);
+  // câmera mais alta que o móvel: o que aparece mais alto na imagem é a borda de TRÁS do tampo
+  const h = hTras < C.y - 0.05 ? hTras : hFrente, w = Math.hypot(R.x - L.x, R.z - L.z);
+  if (!(h > 0.25 && h < 2.6) || w < 0.3 || w > 4) { if (window.IA_DEBUG) window.IA_DEBUG.rej.push({ nome: m.nome, h: +h.toFixed(2), w: +w.toFixed(2), dist: +dist.toFixed(2) }); return; }
+  if (m.grupo === 'assento' && w >= 1.25) Object.assign(m, IA.MOVEIS[23], { cls: 23 }); // assento largo = sofá
+  const c = B.clone().addScaledVector(n, -m.prof / 2), rot = Math.atan2(n.x, n.z);
+  let d = detectados.find(x => x.cls === m.cls && Math.hypot(x.c.x - c.x, x.c.z - c.z) < 0.75);
+  if (!d) { d = { cls: m.cls, nome: m.nome, ic: m.ic, apoio: m.apoio, tipo: m.tipo, c: { x: c.x, z: c.z }, w, h, p: m.prof, rot, n: 0 }; detectados.push(d); }
+  const a = 1 / Math.min(d.n + 1, 6); // média móvel: cada novo quadro refina a medida
+  d.c.x += (c.x - d.c.x) * a; d.c.z += (c.z - d.c.z) * a; d.w += (w - d.w) * a; d.h += (h - d.h) * a; d.n++;
+}
+function rotuloMovel(txt) {
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 110; const c = cv.getContext('2d');
+  c.fillStyle = 'rgba(15,23,42,.85)'; c.beginPath(); c.roundRect(4, 4, 504, 102, 50); c.fill(); c.strokeStyle = '#facc15'; c.lineWidth = 6; c.stroke();
+  c.fillStyle = '#fff'; c.font = '700 44px -apple-system, Segoe UI, Arial'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(txt, 256, 57);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false, sizeAttenuation: false })); s.scale.set(0.3, 0.065, 1); // mesmo tamanho na tela, perto ou longe s.renderOrder = 15; return s;
+}
+function mostrarDetectados(g) {
+  const ok = detectados.filter(d => d.n >= 2);
+  for (const d of ok) {
+    if (!d.grupo) {
+      d.grupo = new THREE.Group();
+      d.caixa = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color: '#facc15', transparent: true, opacity: 0.9, depthTest: false }));
+      d.grupo.add(d.caixa);
+      if (d.apoio) { const t = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: '#22c55e', transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })); t.rotation.x = -Math.PI / 2; t.userData.d = d; d.tampo = t; d.grupo.add(t); tampos.push(t); }
+      g.add(d.grupo);
+      narrar(`🤖 A IA reconheceu: <b>${d.nome}</b> (${fmtM(d.w)} de largura, ${fmtM(d.h)} de altura)${d.apoio ? '. Escolha um <b>enfeite</b> e toque em cima dele: o objeto fica apoiado no tampo.' : '.'}`, 'mv-' + d.cls);
+    }
+    d.grupo.position.set(d.c.x, 0, d.c.z); d.grupo.rotation.y = d.rot;
+    d.caixa.scale.set(d.w, d.h, d.p); d.caixa.position.y = d.h / 2;
+    if (d.tampo) { d.tampo.scale.set(d.w * 0.96, d.p * 0.96, 1); d.tampo.position.y = d.h + 0.004; }
+    const txt = `${d.ic} ${d.nome} · ${fmtM(d.w)}`;
+    if (d.txt !== txt) { if (d.rotulo) d.grupo.remove(d.rotulo); d.rotulo = rotuloMovel(txt); d.grupo.add(d.rotulo); d.txt = txt; }
+    d.rotulo.position.y = d.h + (d.apoio ? 0.55 : 0.18); // acima do enfeite que vai no tampo
+  }
+  $('btnIA').textContent = `🤖 ${ok.length}`;
+}
+const fmtM = v => v.toFixed(2).replace('.', ',') + ' m';
+
 // 🎬 gravar vídeo com narração (câmera + objetos 3D + a voz)
 criarGravador({ nome: 'decora-ra', botaoEm: $('topo'), compor(g, W2, H2) {
   if (estado.modo !== 'giro' || video.readyState >= 2) cobrir(g, video, W2, H2);
@@ -547,4 +678,4 @@ criarGravador({ nome: 'decora-ra', botaoEm: $('topo'), compor(g, W2, H2) {
 } });
 
 // para os testes automáticos
-window.LIVRE = { estado, planos, itens, armar: t => { estado.armado = t; ui(); }, modoRapido, colocarNaMira, girar, girarDe, previa: () => previa };
+window.LIVRE = { estado, planos, itens, armar: t => { estado.armado = t; ui(); }, modoRapido, colocarNaMira, girar, girarDe, previa: () => previa, detectados, ligarIA, camera, anel: () => anel.visible, testeAnel(x, y) { raio({ clientX: x, clientY: y }); return { hits: ray.intersectObjects([anelAro, anelPega], false).length, pega: anelPega.getWorldPosition(new THREE.Vector3()).toArray().map(v => +v.toFixed(2)), cam: camera.position.toArray(), sel: !!estado.sel, R: anelAro.scale.x }; } };
