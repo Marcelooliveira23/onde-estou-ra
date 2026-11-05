@@ -15,6 +15,7 @@ import { OrbitControls } from '../lib/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from '../lib/jsm/loaders/GLTFLoader.js';
 import { StereoEffect } from '../lib/jsm/effects/StereoEffect.js';
 import { criarGravador } from './gravador.js';
+import { narrar, ancorarAcima } from './narrador.js';
 
 window.THREE_MOVEIS = THREE; window.GLTFLOADER_MOVEIS = GLTFLoader;
 for (const arq of ['js/moveis_proc.js', 'js/moveis.js']) await new Promise((ok, erro) => { const s = document.createElement('script'); s.src = arq; s.onload = ok; s.onerror = erro; document.head.appendChild(s); });
@@ -282,7 +283,7 @@ function aplicarLuz() {
   $('btnNoite').textContent = noite ? '☀️' : '🌙';
 }
 aplicarLuz(); luzPronta = true;
-$('btnNoite').addEventListener('click', () => { noite = !noite; aplicarLuz(); });
+$('btnNoite').addEventListener('click', () => { noite = !noite; aplicarLuz(); narrar(noite ? 'Modo <b>noite</b>: o sol apaga e as luminárias do teto acendem.' : 'Modo <b>dia</b>: o sol entra pelas janelas e projeta sombras.', 'noite'); });
 
 // ---------- câmeras ----------
 const camCasa = new THREE.PerspectiveCamera(45, 1, 0.1, 300);
@@ -306,6 +307,7 @@ ctrl.enableDamping = true; ctrl.maxPolarAngle = Math.PI * 0.47; ctrl.minDistance
 
 let modo = 'casa';
 function trocarModo(m) {
+  if (m !== modo) narrar({ casa: '<b>Vista da casa</b>: as paredes ficam cortadas para ver os móveis de cima. Arraste para girar.', andar: '<b>Passeio em primeira pessoa</b>, na altura dos olhos: as paredes bloqueiam e as portas deixam passar.', oculos: '<b>Óculos VR</b>: a tela se divide em duas imagens, uma para cada olho (estereoscopia), como num óculos de papelão.' }[m]);
   modo = m;
   for (const [id, mm] of [['mCasa', 'casa'], ['mAndar', 'andar'], ['mOculos', 'oculos']]) $(id).classList.toggle('ativo', mm === m);
   if (cortada !== (m === 'casa')) { construir(m === 'casa'); if (sel) desselecionar(); }
@@ -485,6 +487,7 @@ function tocar(e) {
     if (!d) return aviso(TIPOS[armado].local === 'parede' ? 'Toque numa <b>parede</b>' : 'Toque no <b>chão</b> de um cômodo');
     d.id = Math.random().toString(36).slice(2, 9); dados.itens.push(d); salvar();
     const w = criarItem(d); armado = null; catalogo.marcar(null); selecionar(w);
+    narrar(`Pronto: <b>${TIPOS[d.tipo].nome}</b> no lugar. Gire na barra ou com dois dedos, 360°.`, 'vr-colocado');
     $('dicaVr').innerHTML = 'Escolha um móvel e <b>toque no chão</b> (ou na parede, para quadros e relógio).';
     return;
   }
@@ -522,7 +525,7 @@ $('selEncostar').addEventListener('click', () => {
   for (let i = 0; i < cm.cantos.length; i++) { const w = parede(cm, i), t = Math.max(0, Math.min(1, dot(sub(d, w.a), w.u) / w.L)), q = add(w.a, mul(w.u, t * w.L)), di = dist(d, q); if (!melhor || di < melhor.di) melhor = { w, q, di, t }; }
   const { w } = melhor, prof = (d.p || TIPOS[d.tipo].dim[2]) / 2 + 0.02, larg = (d.w || TIPOS[d.tipo].dim[0]) / 2;
   const s = Math.max(larg, Math.min(w.L - larg, melhor.t * w.L)), q = add(add(w.a, mul(w.u, s)), mul(w.n, prof));
-  d.x = q.x; d.z = q.z; d.rot = Math.atan2(w.n.x, w.n.z); posItem(sel); sincronizarGiro(); salvar(); aviso('🧲 Encostado na parede');
+  d.x = q.x; d.z = q.z; d.rot = Math.atan2(w.n.x, w.n.z); posItem(sel); sincronizarGiro(); salvar(); aviso('🧲 Encostado na parede'); narrar('<b>Encostar</b>: o móvel foi de costas para a parede mais próxima, já alinhado com ela.', 'encostar');
 });
 // 🎯 ver de perto: a câmera vai até o móvel
 let voo = null;
@@ -710,6 +713,7 @@ function mobiliarSozinho(lista) {
   }
   itensG.clear(); dados.itens.forEach(criarItem); desselecionar(); salvar();
   aviso(`✨ ${n} móveis colocados ${lista.length > 1 ? 'na casa toda' : 'no(a) ' + lista[0].nome}`);
+  narrar(`<b>${n} móveis</b> colocados sozinhos, com regras de design de interiores: móvel em parede sem porta, passagem livre, sofá de frente para a TV, cama com criados-mudos e cortina nas janelas.`);
   return n;
 }
 const alvoAuto = () => (modo === 'casa' ? comodos : [comodos.find(c => dentro(eu, c.cantos)) || comodos[0]]);
@@ -732,8 +736,8 @@ function montarPintar() {
 $('chipsComodo').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { comodoPintar = comodos.find(c => c.id === b.dataset.c); montarPintar(); } });
 $('tintas').addEventListener('click', e => { const b = e.target.closest('button'); if (b) pintar(comodoPintar.id, b.dataset.t); });
 $('pisos').addEventListener('click', e => { const b = e.target.closest('button'); if (b) trocarPiso(comodoPintar.id, b.dataset.p); });
-function pintar(id, cor) { dados.acab[id].parede = cor; matParede[id].color.set(cor); salvar(); montarPintar(); }
-function trocarPiso(id, p) { dados.acab[id].piso = p; matPiso[id].map = texPiso(p); matPiso[id].roughness = BRILHO[p]; matPiso[id].needsUpdate = true; salvar(); montarPintar(); }
+function pintar(id, cor) { narrar('Parede <b>pintada</b>: dá para testar as cores antes de comprar a tinta.', 'pintar'); dados.acab[id].parede = cor; matParede[id].color.set(cor); salvar(); montarPintar(); }
+function trocarPiso(id, p) { narrar(`Piso trocado para <b>${PISOS[p].toLowerCase()}</b> (textura gerada em código).`, 'piso'); dados.acab[id].piso = p; matPiso[id].map = texPiso(p); matPiso[id].roughness = BRILHO[p]; matPiso[id].needsUpdate = true; salvar(); montarPintar(); }
 function abaPainel(qual) {
   $('tMob').classList.toggle('ativo', qual === 'mob'); $('tPintar').classList.toggle('ativo', qual === 'pintar');
   $('corpoMob').hidden = qual !== 'mob'; $('corpoPintar').hidden = qual !== 'pintar'; $('painel').classList.remove('fechado'); $('tOcultar').textContent = '▾';
@@ -774,6 +778,8 @@ if (new URLSearchParams(location.search).has('sim')) document.body.classList.add
 ajustar(); trocarModo(new URLSearchParams(location.search).get('modo') || 'casa');
 if (!dados.itens.length && !dados.autoFeito && !new URLSearchParams(location.search).has('vazia')) { dados.autoFeito = true; mobiliarSozinho(comodos); } // 1ª vez: já mobiliada
 $('carregandoVr').hidden = true;
+ancorarAcima(() => ($('painel').classList.contains('fechado') ? $('painel') : $('painel')));
+narrar(casa.exemplo ? 'Esta é uma <b>casa de exemplo em realidade virtual</b>. Mapeie a sua em 🗺️ Mapear e ela aparece aqui.' : '<b>Realidade virtual:</b> a planta que você mediu com a câmera virou uma casa 3D, com as mesmas medidas.');
 
 let tAnt = performance.now(), comodoAntes = null;
 criarGravador({ nome: 'casa-vr', botaoEm: $('lado'), classeBotao: '', compor(g, W2, H2) {

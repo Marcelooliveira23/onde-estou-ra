@@ -144,6 +144,8 @@ No GitHub, abra o arquivo (ex.: `config.js`) → ícone ✏️ → edite → **C
 5. No **🥽 VR** é igual, e ainda tem **🧲 encostar** (o móvel vai de costas para a parede mais próxima, alinhado), **🎯 ver** (a câmera vai até o móvel) e **⬇️ vista de cima** (a casa inteira, para arrumar com precisão).
 
 ## 🎬 Gravar o vídeo com a sua narração
+- **📋 Entrega do trabalho** (`entrega.html`, link na tela inicial): checklist do que a faculdade pede, 5 formas de gravar com a voz, roteiro em cenas e título/descrição prontos para o YouTube.
+- **💬 Legendas que narram os acontecimentos** (ligadas no 🎬): cada evento (chão encontrado, móvel colocado, canto medido, IA achou as paredes, planta, PDF, VR…) vira uma legenda que explica a técnica; **🔊 voz do app** opcional.
 - **Recomendado:** Gravação de Tela do iPhone com **Microfone ativado** (Central de Controle → toque e segure ⏺️). É o que o enunciado pede.
 - **No app:** botão **🎬** (Decorar, Mapear, VR) → grava a imagem do app **com a sua voz** em .mp4 → **Salvar Vídeo** (vai para o Fotos).
 - Depois: YouTube › ＋ › Enviar → **Não listado** → copiar o link → AVA Univirtus. **Sem música.**

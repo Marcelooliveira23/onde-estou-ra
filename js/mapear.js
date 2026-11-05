@@ -23,6 +23,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from '../lib/jsm/controls/OrbitControls.js';
 import { criarGravador, cobrir, noLugar, balao } from './gravador.js';
+import { narrar, ancorarAcima } from './narrador.js';
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -257,7 +258,7 @@ function ajustarTela() {
   const f = (Math.min(vw, vh) * s / 2) / Math.tan(FOV_LADO_CURTO * d2r / 2); // distância focal em px da tela
   camera.fov = 2 * Math.atan((H / 2) / f) * r2d; camera.aspect = W / H; camera.updateProjectionMatrix();
   const mini = $('mini'); mini.width = mini.clientWidth * dpr; mini.height = mini.clientHeight * dpr;
-  lupa.width = lupa.height = Math.round(lupa.clientWidth * dpr);
+  lupa.width = lupa.height = Math.round(96 * dpr); // tamanho fixo (escondida, clientWidth é 0)
 }
 addEventListener('resize', () => { if (estado.etapa !== 'capa') ajustarTela(); });
 
@@ -275,6 +276,8 @@ async function iniciar() {
   $('carregando').hidden = true; $('hud').hidden = false;
   ajustarTela();
   if ($('chkIA').checked) ligarIA();
+  ancorarAcima(() => ($('planta').hidden ? $('barra') : $('resumo')));
+  narrar('<b>Mapear a casa:</b> o app mede com <b>trigonometria</b>. Sabendo a altura do celular e o ângulo da mira, a distância até o chão é <b>altura ÷ tangente do ângulo</b>.');
   estado.etapa = casa.comodos.length ? 'resumo' : 'nome';
   ui(); requestAnimationFrame(quadro);
   setTimeout(() => { if (!orient) { estado.pc = true; aviso('🖱️ Sem giroscópio (PC): <small>arraste a tela para olhar em volta</small>', '#475569'); } }, 1500);
@@ -373,6 +376,7 @@ function medirTeto() {
   cm.pe = casa.pe = Math.round(r.pe * 100) / 100;
   estado.etapa = 'resumo'; pop(); salvar(); sujar(); ui();
   aviso(`📐 Pé-direito do(a) ${cm.nome}: ${fmt(cm.pe)} m<small>a maquete 3D e os materiais usam esta altura</small>`, '#7c3aed');
+  narrar(`Pé-direito: <b>${fmt(cm.pe)} m</b>. Olhando para cima, o teto fica a altura do celular + distância da parede × tangente do ângulo.`);
 }
 // Calibração: o usuário mede UMA parede com a trena; a casa inteira (e a altura do celular) é corrigida na mesma proporção
 function escalar(k) {
@@ -409,6 +413,7 @@ async function ligarIA() {
     const vistos = {};
     await IA.carregar(p => { if (p.status === 'progress' && p.total) { vistos[p.file] = [p.loaded, p.total]; const v = Object.values(vistos), a = v.reduce((s, x) => s + x[0], 0), b = v.reduce((s, x) => s + x[1], 0); chip.textContent = `🤖 Baixando a IA… ${Math.round(a / b * 100)}%`; } });
     chip.textContent = '🤖 IA pronta'; ui();
+    narrar('A <b>inteligência artificial</b> está ligada: uma rede neural (SegFormer) roda aqui no celular e pinta cada pixel como <b>parede, chão, porta ou janela</b>.');
     aviso(`🤖 IA ligada <small>roda no celular: ${IA.dispositivo}</small>`, '#7c3aed');
   } catch (e) { IA = null; chip.textContent = '🤖 IA indisponível · modo manual'; console.warn(e); }
 }
@@ -443,7 +448,7 @@ async function cicloIA(t) {
     $('iaChip').textContent = `🤖 ${ia.n} pontos${ia.poli ? ` · ${ia.poli.cantos.length} paredes` : ''} · ${Math.round(r.ms)} ms`;
     if ((ia.poli && ia.poli.cantos.length) !== antes) ui();
     if (!iaAuto && cm.cantos.length === 0 && volta() >= 0.95 && ia.poli && ia.poli.cantos.length >= 4 && ia.poli.cheios >= 60) {
-      iaAuto = true; aviso('🤖 Volta completa: <b>a IA fechou a planta</b>', '#7c3aed'); setTimeout(() => { if (estado.etapa === 'cantos' && estado.atual === cm) concluir(); }, 700);
+      iaAuto = true; aviso('🤖 Volta completa: <b>a IA fechou a planta</b>', '#7c3aed'); narrar('Volta completa: com os rodapés achados pela IA em todas as direções, o app encontrou as <b>4 paredes</b> sozinho, sem nenhum toque.'); setTimeout(() => { if (estado.etapa === 'cantos' && estado.atual === cm) concluir(); }, 700);
     }
   } catch (e) { console.warn(e); } finally { iaOcupada = false; }
 }
@@ -543,17 +548,20 @@ function entrei() { // mirou a soleira da porta por onde entrou: posiciona o nov
   cm.aberturas.push(ab); A.liga = { c: cm.id, a: ab.id };
   estado.ligacao = null; estado.etapa = 'cantos'; pop(); sujar(); salvar(); ui();
   aviso(`🔗 ${cm.nome} ligado à planta! <small>agora gire e marque os cantos</small>`, '#2563eb');
+  narrar(`Como a porta é <b>o mesmo ponto nos dois cômodos</b>, o(a) ${cm.nome} foi <b>emendado(a)</b> na planta do outro lado da parede.`);
 }
 function marcarCanto() {
   const m = miraEstavel(); if (!m) return aviso('Incline o celular para <b>o chão</b>', '#b45309');
   if (m.d > 8) return aviso('Longe demais (mais de 8 m). <small>Chegue mais perto do canto</small>', '#b45309');
   estado.atual.cantos.push({ x: m.x, z: m.z }); estado.pilha.push('canto'); pop(); sujar(); ui();
+  narrar(`Canto ${estado.atual.cantos.length} marcado a <b>${fmt(m.d)} m</b>: a direção vem do giroscópio e a distância da inclinação do celular.${estado.atual.cantos.length >= 2 ? ` Parede de ${fmt(dist(estado.atual.cantos[estado.atual.cantos.length - 2], m))} m.` : ''}`);
 }
 function marcarAbertura(tipo) {
   const m = miraEstavel(); if (!m) return aviso('Mire a <b>base</b> da ' + NOME[tipo].toLowerCase() + ', no chão', '#b45309');
   estado.atual.aberturas.push({ id: novoId(), tipo, p: { x: m.x, z: m.z }, larg: LARG[tipo] });
   estado.pilha.push('abertura'); pop(); sujar(); ui();
   aviso(`${ICONE[tipo]} ${NOME[tipo]} marcada`, COR_AB[tipo]);
+  narrar(`${NOME[tipo]} marcada: no fim ela é encaixada na parede mais próxima${tipo === 'janela' ? '' : ' e serve para ligar este cômodo ao próximo'}.`);
 }
 function desfazer() {
   const cm = estado.atual, o = estado.pilha.pop(); if (!o) return;
@@ -629,6 +637,7 @@ function concluir() {
   else if (casa.comodos[0] === cm) endireitar(cm);
   estado.etapa = 'resumo'; salvar(); sujar(); ui();
   aviso(`✅ ${cm.nome}: ${fmt(area(cm.cantos), 1)} m²<small>${sug ? `💡 ${sug} possível janela pela claridade` : 'planta atualizada'}</small>`);
+  narrar(`<b>${cm.nome}: ${fmt(area(cm.cantos), 1)} m²</b>. As paredes foram <b>esquadrejadas</b> (cantos de 90°) e as portas e janelas encaixadas nelas.${sug ? ' Pela claridade, o app sugere uma janela.' : ''}`);
 }
 function refazer() {
   const cm = estado.atual; if (!cm || !['cantos', 'resumo'].includes(estado.etapa)) return;
@@ -900,7 +909,7 @@ function desenharMini() {
 
 // ---------- planta completa: 2D com medidas e maquete 3D ----------
 let aba = '2d', notaPlanta = '';
-function abrirPlanta() { $('planta').hidden = false; trocarAba(aba); abrirResumo(); }
+function abrirPlanta() { $('planta').hidden = false; trocarAba(aba); abrirResumo(); if (casa.comodos.some(c => c.fechado)) narrar(`Planta da casa: <b>${casa.comodos.filter(c => c.fechado).length} cômodo(s), ${fmt(areaTotal(), 1)} m²</b>, com cotas como numa planta de arquiteto. Dá para corrigir qualquer medida em ✏️ Editar.`, 'planta'); }
 function abrirResumo() {
   const f = casa.comodos.filter(c => c.fechado);
   const nota = notaPlanta ? `<div class="nota-planta">${notaPlanta}</div>` : ''; notaPlanta = '';
@@ -1095,8 +1104,8 @@ $('folha').addEventListener('click', e => {
   if (acao === 'fechar') return fecharFolha();
   if (acao === 'menos' || acao === 'mais') { const v = lerMedida() + (acao === 'mais' ? 0.05 : -0.05); $('edMedida').value = fmt(Math.max(0.3, v)); return; }
   lembrar();
-  if (acao === 'aplicar') { const v = lerMedida(); if (!(v >= 0.3 && v <= 30)) { pilhaEd.pop(); return aviso('Medida inválida', '#b45309'); } mudarParede(cm, alvo.i, v); }
-  else if (acao === 'trena') { const v = lerMedida(), L = parede(cm, alvo.i).L; if (!(v > 0.3) || v / L > 1.6 || v / L < 0.6) { pilhaEd.pop(); return aviso('Digite a medida da trena perto da medida atual', '#b45309'); } escalar(v / L); notaPlanta = `📏 Calibrada com a trena: tudo foi corrigido em ${v / L >= 1 ? '+' : ''}${fmt((v / L - 1) * 100, 1)}% · altura do celular agora ${fmt(casa.h)} m`; }
+  if (acao === 'aplicar') { const v = lerMedida(); if (!(v >= 0.3 && v <= 30)) { pilhaEd.pop(); return aviso('Medida inválida', '#b45309'); } mudarParede(cm, alvo.i, v); narrar(`Parede ajustada para <b>${fmt(v)} m</b>: a parede seguinte se moveu junto, mantendo os cantos a 90°.`); }
+  else if (acao === 'trena') { const v = lerMedida(), L = parede(cm, alvo.i).L; if (!(v > 0.3) || v / L > 1.6 || v / L < 0.6) { pilhaEd.pop(); return aviso('Digite a medida da trena perto da medida atual', '#b45309'); } escalar(v / L); narrar(`Medida da <b>trena</b>: como tudo é proporcional à altura do celular, a casa inteira foi corrigida em ${fmt((v / L - 1) * 100, 1)}%.`); notaPlanta = `📏 Calibrada com a trena: tudo foi corrigido em ${v / L >= 1 ? '+' : ''}${fmt((v / L - 1) * 100, 1)}% · altura do celular agora ${fmt(casa.h)} m`; }
   else if (acao === 'add') { cm.aberturas.push({ id: novoId(), tipo: x, p: alvo.p, larg: LARG[x] }); encaixar(cm); }
   else if (acao === 'dividir') { cm.cantos.splice(alvo.i + 1, 0, { x: alvo.p.x, z: alvo.p.z }); encaixar(cm); if (cm.travas) cm.travas = {}; }
   else if (acao === 'tipo') { alvo.a.tipo = x; if (x !== 'janela') delete alvo.a.sugerida; }
@@ -1271,6 +1280,7 @@ async function exportarPDF() {
   pdf.text(`${f.length} cômodo(s) · ${fmt(areaTotal())} m²`, col, 182.5); pdf.text(casa.calibrado ? 'Calibrada com trena' : 'Sem calibração', 286, 182.5, { align: 'right' });
   pdf.setFontSize(6.8); pdf.text(pdf.splitTextToSize('Medidas aproximadas (erro típico de 2 a 5%). Confira as medidas críticas com trena antes de comprar ou executar.', 77), col, 191);
   const blob = pdf.output('blob'), arq = new File([blob], 'planta-da-casa.pdf', { type: 'application/pdf' });
+  narrar(`PDF gerado em escala <b>1:${ESC}</b>, com quadro de áreas, materiais e carimbo, pronto para mandar ao arquiteto.`);
   window.ULTIMO_PDF = blob.size; window.ULTIMO_PDF_URL = pdf.output('datauristring');
   try { if (navigator.canShare && navigator.canShare({ files: [arq] })) { await navigator.share({ files: [arq], title: 'Planta da casa' }); return; } } catch (e) { if (e.name === 'AbortError') return; }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = arq.name; a.click();

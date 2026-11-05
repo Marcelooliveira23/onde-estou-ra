@@ -21,6 +21,11 @@
 
 **Subir no YouTube:** app YouTube › **＋** › Enviar um vídeo → título e descrição → **Visibilidade: Não listado** → Enviar → **Compartilhar › Copiar link** → colar no **AVA Univirtus**.
 
+**Mais alternativas:** AirPods/fone com microfone (voz mais limpa) · **gravar a tela sem falar e narrar depois** no iMovie (🎙️ Narração) ou no Clipchamp · página **📋 Entrega do trabalho** no app, com tudo isso, checklist e o texto pronto do YouTube.
+
+### 💬 Legendas que narram os acontecimentos
+No 🎬 deixe ligado **💬 Legendas explicativas**: cada coisa que acontece vira uma legenda que explica a técnica ("chão encontrado: o app ajustou um plano aos pontos 3D…", "canto marcado a 2,4 m…", "a IA achou as 4 paredes…"). Elas aparecem na Gravação de Tela e no vídeo do 🎬, e servem de **cola** para você narrar. Opcional: **🔊 Voz do app** lê as legendas em voz alta. Para a nota de explicação, o melhor é **a sua voz**.
+
 Fale com as **suas palavras**. Os textos abaixo são só um guia.
 Peso na nota: **projeto funcionando 40%**, **utilidade 30%**, **explicação 30%**.
 Dica: abra o app pelo **ícone na Tela de Início** (fica em tela cheia) e grave numa sala **bem iluminada**.

@@ -6,6 +6,7 @@
  *   3. No computador (OBS, Xbox Game Bar, QuickTime).
  * Cada página passa uma função compor(g, W, H) que desenha o quadro do vídeo.
  */
+import { opcoesHTML, ligarOpcoes, desenharLegenda, vozLigada, narrar } from './narrador.js';
 const CSS = `
 .grav-sheet { position: fixed; inset: 0; z-index: 90; background: rgba(15,23,42,.55); display: flex; align-items: flex-end; justify-content: center; }
 .grav-caixa { background: #fff; width: min(100%, 560px); max-height: 88vh; overflow-y: auto; border-radius: 20px 20px 0 0; padding: 16px 16px max(16px, env(safe-area-inset-bottom)); font-size: 14px; color: #0f172a; line-height: 1.45; }
@@ -19,7 +20,7 @@ const CSS = `
 .grav-bt { font: inherit; font-weight: 800; font-size: 15px; border: 0; border-radius: 12px; padding: 11px 14px; background: #dc2626; color: #fff; width: 100%; margin-top: 8px; }
 .grav-bt.sec { background: #e2e8f0; color: #0f172a; }
 .grav-fechar { float: right; border: 0; background: #e2e8f0; border-radius: 99px; width: 32px; height: 32px; font-weight: 800; }
-.grav-ind { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 95; background: #dc2626; color: #fff; font-weight: 800; font-size: 14px;
+.grav-ind { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 58px); left: 50%; transform: translateX(-50%); z-index: 95; background: #dc2626; color: #fff; font-weight: 800; font-size: 14px;
   border-radius: 99px; padding: 7px 14px; display: flex; gap: 10px; align-items: center; box-shadow: 0 4px 16px rgba(0,0,0,.35); }
 .grav-ind i { width: 10px; height: 10px; border-radius: 50%; background: #fff; animation: gravPisca 1s infinite; }
 .grav-ind button { border: 0; background: #fff; color: #dc2626; font-weight: 900; border-radius: 99px; padding: 3px 10px; font-size: 13px; }
@@ -67,6 +68,8 @@ export function criarGravador({ compor, nome = 'decora-ra', botaoEm, classeBotao
   bt.addEventListener('click', () => {
     if (rec) return parar();
     const f = folha(`<h3>🎬 Gravar o vídeo para o YouTube</h3>
+      <p class="grav-dica" style="margin-top:0">A faculdade pede: <b>gravar a tela do celular com o app funcionando</b>, vídeo <b>explicativo</b>, <b>sem música</b>, no YouTube, com o link no AVA. <a href="entrega.html">📋 Checklist da entrega</a></p>
+      ${opcoesHTML()}
       <div class="grav-op rec"><b class="t">📱 1. Gravação de tela do iPhone <span class="grav-tag">recomendado</span></b>
         É o que o professor pede: <b>gravar a tela do celular</b> com o app funcionando, com a sua voz.
         <ol><li><b>Ajustes › Central de Controle</b> → adicione <b>Gravação de Tela</b> (só na 1ª vez).</li>
@@ -77,19 +80,25 @@ export function criarGravador({ compor, nome = 'decora-ra', botaoEm, classeBotao
       <div class="grav-op"><b class="t">⏺️ 2. Gravar aqui no app (imagem do app + sua voz)</b>
         Grava a câmera com os objetos 3D, sem os botões, e o microfone junto. Bom para trechos "limpos".
         ${podeGravar ? '<button class="grav-bt" data-g="app">⏺️ Começar a gravar com narração</button>' : '<p class="grav-dica">⚠️ Este navegador não grava vídeo. Use a opção 1.</p>'}</div>
+      <div class="grav-op"><b class="t">🎧 Alternativas para a narração</b>
+        <ol><li><b>AirPods / fone com microfone:</b> a voz fica mais limpa (a Gravação de Tela usa o microfone do fone).</li>
+        <li><b>Gravar agora, narrar depois:</b> grave a tela sem som e, no app grátis <b>iMovie</b> (iPhone), toque em <b>🎙️ Narração</b> e fale por cima do vídeo. No Windows: <b>Clipchamp</b> (grátis) › Gravar › Áudio.</li>
+        <li><b>Legendas</b> (acima) ajudam a explicar mesmo nos trechos em que você não fala.</li></ol></div>
       <div class="grav-op"><b class="t">💻 3. No computador</b>
         <ol><li><b>Mac + cabo:</b> QuickTime › Arquivo › Nova Gravação de Filme › na setinha, escolha o <b>iPhone</b> como câmera e o microfone do Mac.</li>
-        <li><b>Windows:</b> espelhe o iPhone (ou rode no PC) e grave com <b>OBS Studio</b> (grátis: fonte "Captura de janela" + "Microfone") ou <b>Xbox Game Bar</b> (<b>Win + Alt + R</b>; microfone: <b>Win + Alt + M</b>).</li></ol></div>
+        <li><b>Windows:</b> espelhe o iPhone por AirPlay (programas receptores como LonelyScreen ou 5KPlayer) e grave com <b>OBS Studio</b> (grátis: "Captura de janela" + "Microfone") ou <b>Xbox Game Bar</b> (<b>Win + Alt + R</b>; microfone: <b>Win + Alt + M</b>).</li></ol></div>
       <div class="grav-op"><b class="t">▶️ Subir no YouTube (não listado)</b>
         <ol><li>App <b>YouTube</b> › <b>＋</b> › <b>Enviar um vídeo</b> → escolha o vídeo.</li>
         <li>Título, descrição → <b>Visibilidade: Não listado</b> → Enviar.</li>
         <li>Toque em <b>Compartilhar › Copiar link</b> e cole no <b>AVA Univirtus</b>.</li></ol>
         <p class="grav-dica">🔇 <b>Sem música</b> (o YouTube bloqueia por direitos autorais). Fale perto do microfone, em lugar silencioso. Vídeo em pé é aceito normalmente.</p></div>`);
+    ligarOpcoes(f);
     const b = f.querySelector('[data-g="app"]'); if (b) b.addEventListener('click', () => { f.remove(); comecar(); });
   });
 
   async function comecar() {
-    try { mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false }); }
+    // com a "voz do app" ligada, o cancelamento de eco é desligado para o microfone também pegar a voz do app
+    try { mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: !vozLigada(), noiseSuppression: !vozLigada(), autoGainControl: true }, video: false }); }
     catch (e) { if (!confirm('Não consegui usar o microfone. Gravar só a imagem (sem narração)?')) return; mic = null; }
     const dpr = Math.min(devicePixelRatio || 1, 2), k = Math.min(dpr, 1920 / Math.max(innerWidth, innerHeight));
     const cv = document.createElement('canvas'); cv.width = Math.round(innerWidth * k / 2) * 2; cv.height = Math.round(innerHeight * k / 2) * 2;
@@ -106,7 +115,7 @@ export function criarGravador({ compor, nome = 'decora-ra', botaoEm, classeBotao
     partes = []; rec.ondataavailable = e => { if (e.data && e.data.size) partes.push(e.data); };
     rec.onstop = terminar;
     // desenha os quadros do vídeo
-    const quadro = () => { if (!rec) return; laco = requestAnimationFrame(quadro); g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height); try { compor(g, cv.width, cv.height); } catch (e) { /* um quadro ruim não para a gravação */ } };
+    const quadro = () => { if (!rec) return; laco = requestAnimationFrame(quadro); g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height); try { compor(g, cv.width, cv.height); desenharLegenda(g, cv.width); } catch (e) { /* um quadro ruim não para a gravação */ } };
     quadro(); rec.start(1000); inicio = performance.now();
     ind = document.createElement('div'); ind.className = 'grav-ind';
     ind.innerHTML = `<i></i><span>00:00</span>${mic ? '<span class="grav-nivel"><span></span></span>' : '🔇'}<button>⏹ Parar</button>`;
@@ -119,7 +128,7 @@ export function criarGravador({ compor, nome = 'decora-ra', botaoEm, classeBotao
       if (analisador) { analisador.getByteTimeDomainData(buf); let m = 0; for (const v of buf) m = Math.max(m, Math.abs(v - 128)); ind.querySelector('.grav-nivel span').style.width = Math.min(100, m / 64 * 100) + '%'; }
     };
     tempo();
-    window.GRAVANDO = true;
+    window.GRAVANDO = true; narrar('Gravando: <b>câmera + objetos 3D + sua voz</b>. Explique o que está fazendo.', 'gravando');
   }
   function parar() { if (rec && rec.state !== 'inactive') rec.stop(); }
   function terminar() {

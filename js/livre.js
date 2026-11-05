@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from '../lib/jsm/loaders/GLTFLoader.js';
 import { AlvaAR } from '../lib/alva_ar.js';
 import { criarGravador, cobrir } from './gravador.js';
+import { narrar, ancorarAcima } from './narrador.js';
 
 window.THREE_MOVEIS = THREE; window.GLTFLOADER_MOVEIS = GLTFLoader;
 for (const arq of ['js/moveis_proc.js', 'js/moveis.js']) await new Promise((ok, erro) => { const s = document.createElement('script'); s.src = arq; s.onload = ok; s.onerror = erro; document.head.appendChild(s); });
@@ -128,6 +129,8 @@ async function iniciar() {
   renderer.setSize(W, H, false);
   $('pontos').width = W; $('pontos').height = H;
   $('carregando').hidden = true; $('hud').hidden = false;
+  ancorarAcima(() => ($('barra').hidden ? $('passos') : $('barra')));
+  narrar('Câmera aberta. O <b>SLAM</b> (localização e mapeamento simultâneos) procura pontos na imagem para entender o ambiente em 3D. Mexa o celular devagar.');
   montarCatalogo();
   estado.inicio = performance.now();
   if (!alva) modoRapido();
@@ -152,7 +155,7 @@ function quadro(t) {
     aplicarPose(pose, camera.quaternion, camera.position);
     camera.updateMatrixWorld();
     estado.quadrosOk++;
-    if (!estado.rastreando) { estado.rastreando = true; status(); }
+    if (!estado.rastreando) { estado.rastreando = true; status(); if (!planos.length) narrar('Os <b>pontos verdes</b> são detalhes do chão que o SLAM está seguindo de um quadro para o outro: assim ele sabe como o celular se move.', 'rastreio'); }
     if (estado.procurar && estado.quadrosOk > 10 && ++contador % 8 === 0) {
       const pp = alva.findPlane();
       if (pp) novoPlano(pp);
@@ -213,6 +216,8 @@ function criarPlano(origem, n, chao) {
   if (navigator.vibrate) navigator.vibrate(40);
   $('passos').hidden = true; $('barra').hidden = false; $('btnRapido').hidden = true;
   aviso(chao ? '✅ Chão encontrado!' : '✅ Parede encontrada!', chao ? '#16a34a' : '#0284c7');
+  if (estado.modo !== 'giro') narrar(chao ? '<b>Chão encontrado!</b> O app ajustou um plano aos pontos 3D e calculou a escala real pela altura do celular. Agora os móveis aparecem em tamanho real.'
+    : '<b>Parede encontrada!</b> Um segundo plano, em pé: agora dá para pendurar quadros, espelhos e relógios.');
   status(); ui();
 }
 
@@ -234,6 +239,7 @@ function modoRapido() {
   camera.position.set(0, 0, 0); cameraPeloGiroscopio(); camera.updateMatrixWorld();
   chaoVirtual();
   aviso('⚡ Modo rápido: chão a 1,3 m', '#7c3aed');
+  narrar('<b>Modo rápido:</b> sem pontos suficientes na imagem, o app usa o <b>giroscópio</b> para saber para onde o celular aponta e coloca o chão 1,3 m abaixo dele.');
 }
 // base do plano: chão → Y = normal; parede → Z = normal e Y = "para cima"
 function orientar(g, n, chao) {
@@ -343,6 +349,7 @@ function colocar(tipo, g, p, rot = 0) {
   m.userData.pronto.then(() => { o.userData.dims = null; if (estado.sel === o) { caixaSel.setFromObject(o); ui(); } });
   posicionarNovo(o, tipo, g, p); g.add(o); girar(o, rot);
   itens.push(o);
+  narrar(`Pronto: <b>${TIPOS[tipo].nome}</b> no lugar, em tamanho real e <b>ancorado</b>: pode andar em volta que ele não sai dali. Dois dedos giram 360°.`, 'colocado-' + tipo);
   g.userData.visuais.forEach(v => { v.visible = false; }); // some o anel depois do 1º objeto
   if (navigator.vibrate) navigator.vibrate(30);
   selecionar(o);
@@ -392,6 +399,7 @@ function montarCatalogo() {
   catalogo = Moveis.montarCatalogo($('catalogo'), id => {
     estado.armado = estado.armado === id ? null : id; if (!estado.armado) tirarPrevia();
     if (estado.armado && TIPOS[id].gltf) Moveis.carregarGltf(TIPOS[id].gltf); // já começa a baixar
+    if (estado.armado) { const t = TIPOS[id], d = t.dim, c = v => Math.round(v * 100); narrar(`<b>${t.nome}</b>: ${t.gltf ? 'modelo 3D <b>escaneado de um objeto real</b>' : 'móvel 3D feito em código'}, com as medidas reais (${c(d[0])} × ${c(d[2])} × ${c(d[1])} cm). A prévia transparente segue a mira, como no "ver no seu ambiente" das lojas.`); }
     selecionar(null);
   });
 }
@@ -404,6 +412,7 @@ function sincronizarGiro() {
   $('faixaGiro').value = g; $('grausTxt').textContent = g + '°';
 }
 $('faixaGiro').addEventListener('input', e => { const o = estado.sel; if (o) girar(o, -(+e.target.value) * Math.PI / 180 * -1); });
+$('faixaGiro').addEventListener('change', e => narrar(`Girado para <b>${e.target.value}°</b>: dá para virar o móvel para qualquer direção do cômodo.`, 'giro'));
 $('btnGirar').onclick = () => { const o = estado.sel; if (o) girar(o, girarDe(o) - Math.PI / 12); };
 $('btnGirarE').onclick = () => { const o = estado.sel; if (o) girar(o, girarDe(o) + Math.PI / 12); };
 // ---------- 📏 medidas do objeto (largura × profundidade × altura), como nas lojas ----------
@@ -462,6 +471,7 @@ window.addEventListener('keydown', e => { if (e.key === 'Enter' && estado.armado
 $('btnMenor').onclick = () => { const o = estado.sel; if (o) { o.userData.esc = Math.max(0.2, o.userData.esc / 1.15); o.scale.setScalar(o.userData.esc); } };
 $('btnMaior').onclick = () => { const o = estado.sel; if (o) { o.userData.esc = Math.min(4, o.userData.esc * 1.15); o.scale.setScalar(o.userData.esc); } };
 $('btnVariar').onclick = () => {
+  narrar('Outra <b>cor</b> (ou outra obra, no quadro): o mesmo móvel em versões diferentes, para comparar.', 'variar');
   const o = estado.sel; if (!o) return;
   o.userData.v = (o.userData.v + 1) % TIPOS[o.userData.tipo].variantes;
   o.remove(o.children[0]); const m = Moveis.criar(o.userData.tipo, o.userData.v); o.add(m);
@@ -507,6 +517,7 @@ $('btnQLFechar').onclick = () => { $('ql').hidden = true; };
 
 // ---------- 📸 foto do ambiente decorado (para salvar ou mandar no WhatsApp) ----------
 $('btnFoto').onclick = () => {
+  narrar('<b>Foto</b>: a imagem da câmera e os objetos 3D viram uma só foto para mandar para a família antes de comprar.', 'foto');
   const dpr = renderer.getPixelRatio(), cw = Math.round(W * dpr), ch = Math.round(H * dpr);
   const c = document.createElement('canvas'); c.width = cw; c.height = ch;
   const x = c.getContext('2d');

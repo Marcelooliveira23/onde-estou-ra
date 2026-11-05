@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1120">
+<title>Entrega do Trabalho · Decora RA</title>
+<link rel="icon" href="icones/icone-192.png">
+<style>
+  :root { --fundo: #0b1120; --cartao: #111a2e; --borda: #1e2a44; --texto: #e2e8f0; --suave: #94a3b8; --verde: #22c55e; --azul: #38bdf8; --ambar: #fbbf24;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--fundo); color: var(--texto); }
+  main { max-width: 760px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) 16px 48px; }
+  a { color: var(--azul); }
+  .voltar { font-weight: 700; text-decoration: none; font-size: 15px; }
+  h1 { font-size: clamp(28px, 7vw, 40px); letter-spacing: -1px; margin: 14px 0 4px; }
+  .sub { color: var(--suave); font-size: 16px; margin: 0 0 18px; line-height: 1.45; }
+  h2 { font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--suave); margin: 30px 0 10px; }
+  .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 18px; padding: 14px 16px; margin-bottom: 10px; }
+  .cartao b.t { display: block; font-size: 16px; margin-bottom: 4px; }
+  .cartao p, .cartao li { color: var(--suave); line-height: 1.5; font-size: 15px; }
+  .cartao ol, .cartao ul { margin: 6px 0 0; padding-left: 20px; }
+  .rec { border-color: #15803d; }
+  .tag { font-size: 11px; font-weight: 800; background: #14532d; color: #86efac; border-radius: 99px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; }
+  .check { display: flex; gap: 12px; align-items: flex-start; padding: 10px 2px; border-top: 1px solid var(--borda); cursor: pointer; }
+  .check:first-of-type { border-top: 0; }
+  .check input { width: 24px; height: 24px; accent-color: var(--verde); flex: none; margin-top: 1px; }
+  .check b { display: block; font-size: 15.5px; }
+  .check small { color: var(--suave); font-size: 13.5px; line-height: 1.4; }
+  .peso { float: right; font-size: 12px; font-weight: 800; color: var(--ambar); }
+  .barra { height: 10px; background: #1e293b; border-radius: 99px; overflow: hidden; margin: 6px 0 4px; }
+  .barra span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #22c55e, #38bdf8); transition: width .3s; }
+  .cena { display: grid; grid-template-columns: 74px 1fr; gap: 10px; padding: 9px 0; border-top: 1px solid var(--borda); }
+  .cena:first-child { border-top: 0; }
+  .cena .tempo { font-weight: 800; color: var(--ambar); font-size: 13px; }
+  .cena b { display: block; }
+  .cena p { margin: 2px 0 0; font-size: 14px; }
+  .cena i { color: #cbd5e1; }
+  textarea { width: 100%; min-height: 220px; background: #0f172a; color: var(--texto); border: 1px solid var(--borda); border-radius: 12px; padding: 10px; font: 13.5px/1.45 ui-monospace, Menlo, monospace; }
+  input.titulo { width: 100%; background: #0f172a; color: var(--texto); border: 1px solid var(--borda); border-radius: 12px; padding: 10px; font: inherit; font-weight: 700; }
+  button.copiar { margin-top: 8px; font: inherit; font-weight: 800; border: 0; border-radius: 12px; padding: 10px 14px; background: var(--verde); color: #052e16; }
+  .nota { color: var(--suave); font-size: 13px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<main>
+  <a class="voltar" href="index.html">← Voltar ao app</a>
+  <h1>📋 Entrega do trabalho</h1>
+  <p class="sub">Atividade Prática · Realidade Virtual e Aumentada · Prof. Jadson. Tudo o que o enunciado pede, as formas de gravar a tela com a sua voz e o texto pronto para o YouTube.</p>
+
+  <h2>1 · O que a faculdade pede</h2>
+  <div class="cartao">
+    <div class="barra"><span id="progresso"></span></div><small id="progTxt" class="nota"></small>
+    <label class="check"><input type="checkbox" data-c="ra"><span><b>Protótipo de Realidade Aumentada <span class="peso">40% · funcionando</span></b><small>Abra o app no iPhone pelo link (de preferência pelo ícone na Tela de Início). Ensaie antes no mesmo cômodo.</small></span></label>
+    <label class="check"><input type="checkbox" data-c="tela"><span><b>Gravar a tela do celular com o app em execução</b><small>Gravação de Tela do iPhone com o <b>microfone ligado</b> (opção A abaixo).</small></span></label>
+    <label class="check"><input type="checkbox" data-c="explica"><span><b>Vídeo explicativo, com a sua voz <span class="peso">30% · explicação</span></b><small>Narre o que acontece e como funciona. Ligue as <b>💬 legendas</b> no 🎬: elas explicam cada acontecimento e servem de cola.</small></span></label>
+    <label class="check"><input type="checkbox" data-c="util"><span><b>Mostrar a utilidade <span class="peso">30% · utilidade</span></b><small>"Ver o móvel em tamanho real antes de comprar", "medir a casa e gerar a planta", "lista de materiais".</small></span></label>
+    <label class="check"><input type="checkbox" data-c="musica"><span><b>Sem música</b><small>Só a sua voz (música pode bloquear o vídeo por direitos autorais).</small></span></label>
+    <label class="check"><input type="checkbox" data-c="youtube"><span><b>Vídeo no YouTube (obrigatório)</b><small>Visibilidade <b>Não listado</b>. Título e descrição prontos no item 4.</small></span></label>
+    <label class="check"><input type="checkbox" data-c="ava"><span><b>Link entregue no AVA Univirtus</b><small>Compartilhar › Copiar link → colar como resposta do trabalho.</small></span></label>
+    <label class="check"><input type="checkbox" data-c="autoria"><span><b>Autoria própria (obrigatório)</b><small>Você grava e narra. Modelos 3D e bibliotecas de terceiros estão creditados (licenças livres) na descrição.</small></span></label>
+  </div>
+
+  <h2>2 · Como gravar a tela com a sua voz</h2>
+  <div class="cartao rec"><b class="t">A · Gravação de Tela do iPhone <span class="tag">recomendado</span></b>
+    <ol><li><b>Ajustes › Central de Controle</b> → adicione <b>Gravação de Tela</b> (só na 1ª vez).</li>
+      <li>Abra a Central de Controle e <b>toque e segure</b> o botão ⏺️.</li>
+      <li>Toque em <b>Microfone</b> até ficar <b>vermelho</b> → <b>Iniciar Gravação</b> (conta 3 segundos).</li>
+      <li>Abra o app e use falando. Para parar: toque na <b>pílula vermelha</b> no topo → Parar. Vai para o <b>Fotos</b>.</li></ol>
+    <p>Dica: ative <b>Não Perturbe</b> antes, para nenhuma notificação aparecer no vídeo.</p></div>
+  <div class="cartao"><b class="t">B · Com AirPods ou fone com microfone</b><p>Mesmo passo a passo da opção A: com o fone conectado, a Gravação de Tela usa o microfone dele e a voz sai mais limpa, sem eco do cômodo.</p></div>
+  <div class="cartao"><b class="t">C · Botão 🎬 dentro do app</b><p>No Decorar, no Mapear e no VR: grava a imagem do app (câmera + objetos 3D + legendas, sem os botões) <b>com a sua voz</b> e salva em .mp4. Bom para cenas "limpas"; junte as cenas no Fotos ou no iMovie.</p></div>
+  <div class="cartao"><b class="t">D · Gravar agora e narrar depois</b><p>Grave a tela sem falar (opção A, microfone desligado). Depois, no app grátis <b>iMovie</b>: crie um projeto com o vídeo, toque em <b>🎙️ Narração</b> e fale por cima, cena por cena. No Windows: <b>Clipchamp</b> (grátis) › Gravar › Áudio. Ótimo se você trava ao falar e usar ao mesmo tempo.</p></div>
+  <div class="cartao"><b class="t">E · Pelo computador</b><p><b>Mac:</b> iPhone no cabo → QuickTime › Arquivo › Nova Gravação de Filme › na setinha escolha o <b>iPhone</b> como câmera e o microfone do Mac. <b>Windows:</b> espelhe o iPhone por AirPlay (programas receptores como LonelyScreen ou 5KPlayer) e grave com <b>OBS Studio</b> (Captura de janela + Microfone) ou Xbox Game Bar (<b>Win + Alt + R</b>).</p></div>
+
+  <h2>3 · Roteiro em cenas (≈ 4 min)</h2>
+  <div class="cartao">
+    <div class="cena"><span class="tempo">0:00</span><div><b>Apresentação</b><p><i>"Este é o Decora RA, meu protótipo de Realidade Aumentada para decorar e medir a casa pelo celular."</i></p></div></div>
+    <div class="cena"><span class="tempo">0:15</span><div><b>Utilidade</b><p><i>"Antes de comprar um sofá, dá para ver se cabe e se combina, em tamanho real."</i></p></div></div>
+    <div class="cena"><span class="tempo">0:35</span><div><b>🪄 Decorar (RA sem placa)</b><p>Ache o chão (pontos verdes) → escolha o sofá → ficha com medidas → prévia na mira → <b>📍 Colocar</b> → ande em volta → gire com 2 dedos → quadro na parede.</p></div></div>
+    <div class="cena"><span class="tempo">1:40</span><div><b>🗺️ Mapear a casa</b><p>Volta de 360°: a IA acha as paredes (toque no 🤖 para mostrar o que ela vê) → m² → passe pela porta → planta → ✏️ corrija uma medida → 📄 PDF.</p></div></div>
+    <div class="cena"><span class="tempo">2:50</span><div><b>🥽 Realidade Virtual</b><p>A casa medida já abre mobiliada → troque uma cor → 🚶 passeie → 👓 óculos por 3 s.</p></div></div>
+    <div class="cena"><span class="tempo">3:20</span><div><b>Como foi feito + encerramento</b><p>Abra 🧠 Como funciona: WebAR no Safari, SLAM, trigonometria, IA no celular, three.js. <i>"Obrigado!"</i></p></div></div>
+    <p class="nota">Roteiro completo, com falas e plano B: <code>ROTEIRO_VIDEO.md</code>. Ligue as 💬 legendas no 🎬: cada acontecimento aparece explicado na tela.</p>
+  </div>
+
+  <h2>4 · Texto pronto para o YouTube</h2>
+  <div class="cartao">
+    <input class="titulo" id="titulo" value="Decora RA – protótipo de Realidade Aumentada para decorar e medir a casa (UNINTER)">
+    <button class="copiar" data-copiar="titulo">📋 Copiar título</button>
+    <textarea id="descricao">Atividade Prática – Realidade Virtual e Aumentada (UNINTER) – Prof. Jadson de Araujo Almeida
+
+Decora RA: protótipo de Realidade Aumentada que roda no navegador do iPhone (WebAR).
+• Decorar sem placa: SLAM reconhece o chão e as paredes; móveis 3D reais em tamanho real, girar 360°, medidas em cm.
+• Mapear a casa: trigonometria (distância = altura ÷ tangente do ângulo) + IA de segmentação no celular; planta 2D, maquete 3D, PDF em escala e lista de materiais.
+• Casa em Realidade Virtual: mobiliar, pintar e passear por dentro, com óculos VR.
+• Com placa: localizador da casa com mapa no canto da tela.
+
+Utilidade: ver móveis em tamanho real antes de comprar, medir os cômodos e planejar a reforma.
+
+App: https://marcelooliveira23.github.io/onde-estou-ra/
+
+Créditos: modelos 3D Poly Haven (CC0); obras de arte em domínio público (Wikimedia Commons); three.js, AlvaAR (GPL-3.0), MindAR, A-Frame, transformers.js / SegFormer (ADE20K), jsPDF. Vídeo e narração: autoria própria. Sem música.</textarea>
+    <button class="copiar" data-copiar="descricao">📋 Copiar descrição</button>
+  </div>
+
+  <h2>5 · Enviar</h2>
+  <div class="cartao"><ol>
+    <li>App <b>YouTube</b> › <b>＋</b> › <b>Enviar um vídeo</b> → escolha o vídeo do Fotos.</li>
+    <li>Cole o título e a descrição → <b>Visibilidade: Não listado</b> → Enviar.</li>
+    <li>Espere processar → <b>Compartilhar › Copiar link</b>.</li>
+    <li>No <b>AVA Univirtus</b>, abra a atividade e cole o link como resposta.</li>
+    <li>Abra o link numa janela anônima para conferir se o vídeo toca.</li></ol></div>
+  <p class="nota"><a href="explicacao.html">🧠 Como funciona</a> · <a href="index.html">🏠 App</a></p>
+</main>
+<script>
+  const CHAVE = 'decora-entrega-v1'; let marc = {};
+  try { marc = JSON.parse(localStorage.getItem(CHAVE)) || {}; } catch (e) { marc = {}; }
+  const caixas = [...document.querySelectorAll('[data-c]')];
+  function atualizar() {
+    const n = caixas.filter(c => c.checked).length;
+    document.getElementById('progresso').style.width = (n / caixas.length * 100) + '%';
+    document.getElementById('progTxt').textContent = n === caixas.length ? '✅ Tudo pronto para entregar!' : `${n} de ${caixas.length} itens feitos`;
+  }
+  caixas.forEach(c => { c.checked = !!marc[c.dataset.c]; c.addEventListener('change', () => { marc[c.dataset.c] = c.checked; try { localStorage.setItem(CHAVE, JSON.stringify(marc)); } catch (e) {} atualizar(); }); });
+  atualizar();
+  document.querySelectorAll('[data-copiar]').forEach(b => b.addEventListener('click', async () => {
+    const el = document.getElementById(b.dataset.copiar); el.select && el.select();
+    try { await navigator.clipboard.writeText(el.value); } catch (e) { document.execCommand && document.execCommand('copy'); }
+    const t = b.textContent; b.textContent = '✅ Copiado!'; setTimeout(() => { b.textContent = t; }, 1500);
+  }));
+</script>
+</body>
+</html>
