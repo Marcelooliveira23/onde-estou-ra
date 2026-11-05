@@ -69,6 +69,7 @@
   body.oculos .ui:not(#sairVr):not(#dicaOculos) { display: none !important; }
   body.sim .ui { display: none !important; }
 </style>
+<script src="js/semzoom.js"></script>
 </head>
 <body>
 <canvas id="vr"></canvas>
@@ -116,6 +117,7 @@
 </div>
 <div id="flash"></div>
 
+<script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.8.3/dist/es-module-shims.js"></script>
 <script type="importmap">{ "imports": { "three": "./lib/three.module.min.js" } }</script>
 <script type="module" src="js/vr.js"></script>
 </body>

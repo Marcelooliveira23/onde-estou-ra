@@ -55,7 +55,8 @@ export function criarGravador({ compor, nome = 'decora-ra', botaoEm, classeBotao
   estilo();
   const bt = document.createElement('button'); bt.className = classeBotao; bt.title = 'Gravar vídeo com narração'; bt.textContent = '🎬';
   botaoEm.appendChild(bt);
-  let rec = null, partes = [], inicio = 0, mic = null, ind = null, analisador = null, laco = 0;
+  let rec = null, partes = [], inicio = 0, mic = null, ind = null, analisador = null, laco = 0, telaAtual = null;
+  const podeTela = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) && !/Android|iPhone|iPad|iPod/.test(navigator.userAgent);
   const iOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const podeGravar = !!(window.MediaRecorder && HTMLCanvasElement.prototype.captureStream);
 
@@ -65,8 +66,14 @@ export function criarGravador({ compor, nome = 'decora-ra', botaoEm, classeBotao
     f.addEventListener('click', e => { if (e.target === f || e.target.closest('.grav-fechar')) f.remove(); });
     document.body.appendChild(f); return f;
   }
+  const AJUDA = 'decora-grav-ajuda-v1';
   bt.addEventListener('click', () => {
     if (rec) return parar();
+    let viu = false; try { viu = !!localStorage.getItem(AJUDA); localStorage.setItem(AJUDA, '1'); } catch (e) { /* privado */ }
+    if (viu) return comecar(); // 1 toque: já começa a gravar, com a sua voz
+    abrirAjuda();
+  });
+  function abrirAjuda() {
     const f = folha(`<h3>🎬 Gravar o vídeo para o YouTube</h3>
       <p class="grav-dica" style="margin-top:0">A faculdade pede: <b>gravar a tela do celular com o app funcionando</b>, vídeo <b>explicativo</b>, <b>sem música</b>, no YouTube, com o link no AVA. <a href="entrega.html">📋 Checklist da entrega</a></p>
       ${opcoesHTML()}
@@ -74,16 +81,22 @@ export function criarGravador({ compor, nome = 'decora-ra', botaoEm, classeBotao
         É o que o professor pede: <b>gravar a tela do celular</b> com o app funcionando, com a sua voz.
         <ol><li><b>Ajustes › Central de Controle</b> → adicione <b>Gravação de Tela</b> (só na 1ª vez).</li>
         <li>Abra a Central de Controle (deslize do canto superior direito) e <b>toque e segure</b> o botão ⏺️.</li>
-        <li>Toque em <b>Microfone</b> até ficar <b>vermelho (ativado)</b> → <b>Iniciar Gravação</b>. <b>⚠️ Um toque simples grava SEM a sua voz</b>: tem que <b>segurar</b> o botão.</li>
+        <li>Toque em <b>Microfone</b> até ficar <b>vermelho (ativado)</b> → <b>Iniciar Gravação</b>. <b>Só na 1ª vez:</b> o iPhone <b>lembra o microfone ligado</b>. Das próximas vezes, <b>um toque simples</b> no ⏺️ já grava com a sua voz (confira o ícone 🎙️ vermelho).</li>
         <li>Volte ao app e use narrando. Para parar: toque no <b>relógio/pílula vermelha</b> lá em cima → Parar.</li>
         <li>O vídeo vai para o app <b>Fotos</b>.</li></ol></div>
       <p class="grav-dica" style="background:#fef3c7;color:#78350f;border-radius:10px;padding:8px 10px">⚠️ <b>Use UMA das duas</b>: a gravação de tela do iPhone <b>ou</b> o ⏺️ do app. As duas juntas disputam o microfone e o vídeo do iPhone sai <b>sem voz</b>.</p>
       <div class="grav-op"><b class="t">⏺️ 2. Gravar aqui no app (imagem do app + sua voz)</b>
         Grava a câmera com os objetos 3D, sem os botões, e o microfone junto. Bom para trechos "limpos".
-        ${podeGravar ? '<button class="grav-bt" data-g="app">⏺️ Começar a gravar com narração</button>' : '<p class="grav-dica">⚠️ Este navegador não grava vídeo. Use a opção 1.</p>'}</div>
+        ${podeTela ? '<button class="grav-bt" data-g="tela" style="background:#1d4ed8">🖥️ Gravar a ABA INTEIRA (com os botões) + sua voz</button><p class="grav-dica">No computador: escolha <b>esta aba</b> na janela que abrir.</p>' : ''}
+        ${podeGravar ? '<button class="grav-bt" data-g="app">⏺️ Começar a gravar com narração</button><p class="grav-dica">Daqui em diante, <b>um toque no 🎬 já começa a gravar com a sua voz</b> (o microfone liga sozinho). Toque de novo para parar. Esta ajuda fica no <b>?</b> da barra vermelha.</p>' : '<p class="grav-dica">⚠️ Este navegador não grava vídeo. Use a opção 1.</p>'}</div>
       <div class="grav-op"><b class="t">🎧 Alternativas para a narração</b>
         <ol><li><b>AirPods / fone com microfone:</b> a voz fica mais limpa (a Gravação de Tela usa o microfone do fone).</li>
-        <li><b>Gravar agora, narrar depois:</b> grave a tela sem som e, no app grátis <b>iMovie</b> (iPhone), toque em <b>🎙️ Narração</b> e fale por cima do vídeo. No Windows: <b>Clipchamp</b> (grátis) › Gravar › Áudio.</li>
+        <li><b>Plano de segurança: colocar a voz DEPOIS</b> (apps grátis no iPhone):
+          <br>• <b>iMovie</b> (da Apple, grátis, sem marca d'água): Novo projeto › Filme › escolha o vídeo › Criar Filme › leve a linha branca ao início › 🎙️ <b>Narração</b> › Gravar (conta 3 s) › fale › Parar › Aceitar › Concluído › Compartilhar › Salvar Vídeo.
+          <br>• <b>CapCut</b> (grátis): Novo projeto › vídeo › <b>Áudio › Gravar</b> (🎙️) › fale › exporte em 1080p. <b>Não adicione música.</b>
+          <br>• <b>InShot</b> (grátis, com marca d'água pequena): Vídeo › <b>Música › Gravar</b> (🎙️).
+          <br>• <b>Gravador</b> (app de voz do iPhone): grave a narração vendo o vídeo e importe o áudio no iMovie.
+          <br>• No Windows: <b>Clipchamp</b> (grátis) › Gravar › Áudio.</li>
         <li><b>Legendas</b> (acima) ajudam a explicar mesmo nos trechos em que você não fala.</li></ol></div>
       <div class="grav-op"><b class="t">💻 3. No computador</b>
         <ol><li><b>Mac + cabo:</b> QuickTime › Arquivo › Nova Gravação de Filme › na setinha, escolha o <b>iPhone</b> como câmera e o microfone do Mac.</li>
@@ -94,33 +107,47 @@ export function criarGravador({ compor, nome = 'decora-ra', botaoEm, classeBotao
         <li>Toque em <b>Compartilhar › Copiar link</b> e cole no <b>AVA Univirtus</b>.</li></ol>
         <p class="grav-dica">🔇 <b>Sem música</b> (o YouTube bloqueia por direitos autorais). Fale perto do microfone, em lugar silencioso. Vídeo em pé é aceito normalmente.</p></div>`);
     ligarOpcoes(f);
-    const b = f.querySelector('[data-g="app"]'); if (b) b.addEventListener('click', () => { if (!confirm('O ⏺️ do app vai usar o MICROFONE.\n\nSe a Gravação de Tela do iPhone estiver ligada, pare ela antes (senão ela fica sem a sua voz).\n\nComeçar a gravar pelo app?')) return; f.remove(); comecar(); });
-  });
+    const b = f.querySelector('[data-g="app"]'); if (b) b.addEventListener('click', () => { f.remove(); if (!rec) comecar(); });
+    const bTela = f.querySelector('[data-g="tela"]'); if (bTela) bTela.addEventListener('click', () => { f.remove(); if (!rec) comecar('tela'); });
+  }
 
-  async function comecar() {
+  async function comecar(modo = 'app') {
+    if (rec) return;
+    // o microfone liga sozinho junto com a gravação (o navegador só pergunta a permissão na 1ª vez)
     // com a "voz do app" ligada, o cancelamento de eco é desligado para o microfone também pegar a voz do app
     try { mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: !vozLigada(), noiseSuppression: !vozLigada(), autoGainControl: true }, video: false }); }
-    catch (e) { if (!confirm('Não consegui usar o microfone. Gravar só a imagem (sem narração)?')) return; mic = null; }
-    const dpr = Math.min(devicePixelRatio || 1, 2), k = Math.min(dpr, 1920 / Math.max(innerWidth, innerHeight));
-    const cv = document.createElement('canvas'); cv.width = Math.round(innerWidth * k / 2) * 2; cv.height = Math.round(innerHeight * k / 2) * 2;
-    const g = cv.getContext('2d');
-    const fluxo = cv.captureStream(30);
+    catch (e) {
+      const dica = iOS ? 'No iPhone: toque em "aA" na barra de endereço > Ajustes do Site > Microfone > Permitir (ou Ajustes > Apps > Safari > Microfone).' : 'Clique no cadeado ao lado do endereço e permita o Microfone.';
+      if (!confirm('🎙️ O microfone não foi liberado, então a sua voz NÃO seria gravada.\n\n' + dica + '\n\nOK = gravar só a imagem · Cancelar = liberar o microfone e tentar de novo.')) return; mic = null;
+    }
+    let fluxo, cv = null, g = null, tela = null;
+    if (modo === 'tela') { // computador: grava a aba/janela inteira (com os botões) + a sua voz
+      try { tela = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: false, preferCurrentTab: true, selfBrowserSurface: 'include' }); }
+      catch (e) { if (mic) mic.getTracks().forEach(t => t.stop()); mic = null; return; }
+      fluxo = new MediaStream(tela.getVideoTracks()); tela.getVideoTracks()[0].addEventListener('ended', parar);
+    } else {
+      const dpr = Math.min(devicePixelRatio || 1, 2), k = Math.min(dpr, 1920 / Math.max(innerWidth, innerHeight));
+      cv = document.createElement('canvas'); cv.width = Math.round(innerWidth * k / 2) * 2; cv.height = Math.round(innerHeight * k / 2) * 2;
+      g = cv.getContext('2d');
+      fluxo = (cv.captureStream || cv.mozCaptureStream).call(cv, 30);
+    }
+    telaAtual = tela;
     if (mic) {
       mic.getAudioTracks().forEach(t => fluxo.addTrack(t));
-      try { const ac = new (window.AudioContext || window.webkitAudioContext)(); analisador = ac.createAnalyser(); analisador.fftSize = 256; ac.createMediaStreamSource(mic).connect(analisador); } catch (e) { analisador = null; }
+      try { const ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); analisador = ac.createAnalyser(); analisador.fftSize = 256; ac.createMediaStreamSource(mic).connect(analisador); } catch (e) { analisador = null; }
     }
     const tipos = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
     const mime = tipos.find(t => MediaRecorder.isTypeSupported(t)) || '';
     try { rec = new MediaRecorder(fluxo, mime ? { mimeType: mime, videoBitsPerSecond: 8e6 } : undefined); }
-    catch (e) { alert('Não foi possível gravar neste navegador: ' + e.message); return; }
+    catch (e) { alert('Não foi possível gravar neste navegador: ' + e.message + '\n\nUse a Gravação de Tela do celular (opção 1).'); if (mic) mic.getTracks().forEach(t => t.stop()); mic = null; if (tela) tela.getTracks().forEach(t => t.stop()); return; }
     partes = []; rec.ondataavailable = e => { if (e.data && e.data.size) partes.push(e.data); };
     rec.onstop = terminar;
     // desenha os quadros do vídeo
-    const quadro = () => { if (!rec) return; laco = requestAnimationFrame(quadro); g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height); try { compor(g, cv.width, cv.height); desenharLegenda(g, cv.width); } catch (e) { /* um quadro ruim não para a gravação */ } };
+    const quadro = () => { if (!rec || !g) return; laco = requestAnimationFrame(quadro); g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height); try { compor(g, cv.width, cv.height); desenharLegenda(g, cv.width); } catch (e) { /* um quadro ruim não para a gravação */ } };
     quadro(); rec.start(1000); inicio = performance.now();
     ind = document.createElement('div'); ind.className = 'grav-ind';
-    ind.innerHTML = `<i></i><span>00:00</span>${mic ? '<span class="grav-nivel"><span></span></span>' : '🔇'}<button>⏹ Parar</button>`;
-    ind.querySelector('button').addEventListener('click', parar); document.body.appendChild(ind);
+    ind.innerHTML = `<i></i><span>00:00</span>${mic ? '<span class="grav-nivel"><span></span></span>' : '🔇'}<button class="grav-ajuda" title="ajuda">?</button><button>⏹ Parar</button>`;
+    ind.querySelector('button:last-child').addEventListener('click', parar); ind.querySelector('.grav-ajuda').addEventListener('click', abrirAjuda); document.body.appendChild(ind);
     bt.textContent = '⏹'; bt.style.background = '#dc2626';
     const buf = new Uint8Array(128);
     const tempo = () => {
@@ -135,6 +162,7 @@ export function criarGravador({ compor, nome = 'decora-ra', botaoEm, classeBotao
   function terminar() {
     const tipo = (rec && rec.mimeType) || 'video/webm'; cancelAnimationFrame(laco); rec = null; window.GRAVANDO = false;
     if (mic) mic.getTracks().forEach(t => t.stop()); mic = null;
+    if (telaAtual) telaAtual.getTracks().forEach(t => t.stop()); telaAtual = null;
     if (ind) ind.remove(); bt.textContent = '🎬'; bt.style.background = '';
     const blob = new Blob(partes, { type: tipo.split(';')[0] }), ext = /mp4/.test(tipo) ? 'mp4' : 'webm';
     const arq = new File([blob], `${nome}-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.${ext}`, { type: blob.type });

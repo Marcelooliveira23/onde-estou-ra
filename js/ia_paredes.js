@@ -26,14 +26,16 @@ export function carregar(progresso) {
     };
     let gpu = false;
     try { gpu = !!(navigator.gpu && await navigator.gpu.requestAdapter()); } catch (e) { gpu = false; }
-    if (gpu) { try { await tentar('webgpu', 'fp32'); return modelo; } catch (e) { /* cai para wasm */ } }
-    await tentar('wasm', 'q8');
-    return modelo;
+    const aquecer = async () => { const c = document.createElement('canvas'); c.width = c.height = 16; await segmentar(c, 0, 0, 16, 16); }; // a 1ª análise é a mais lenta
+    if (gpu) { try { await tentar('webgpu', 'fp32'); await aquecer(); aquecida = true; return modelo; } catch (e) { modelo = null; /* cai para o processador */ } }
+    await tentar('wasm', 'q8'); await aquecer();
+    aquecida = true; return modelo;
   })();
   carregando.catch(() => { carregando = null; });
   return carregando;
 }
-export const pronto = () => !!modelo;
+let aquecida = false;
+export const pronto = () => !!modelo && aquecida;
 
 let S = 384; // a imagem vai ao modelo em 384×384 (saída 96×96); com WebGPU, 512×512 (saída 128×128: mais precisa)
 const cv = document.createElement('canvas'); cv.width = cv.height = S;
