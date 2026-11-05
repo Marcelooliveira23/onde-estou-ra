@@ -74,9 +74,10 @@ export function criarGravador({ compor, nome = 'decora-ra', botaoEm, classeBotao
         É o que o professor pede: <b>gravar a tela do celular</b> com o app funcionando, com a sua voz.
         <ol><li><b>Ajustes › Central de Controle</b> → adicione <b>Gravação de Tela</b> (só na 1ª vez).</li>
         <li>Abra a Central de Controle (deslize do canto superior direito) e <b>toque e segure</b> o botão ⏺️.</li>
-        <li>Toque em <b>Microfone</b> até ficar <b>vermelho (ativado)</b> → <b>Iniciar Gravação</b>.</li>
+        <li>Toque em <b>Microfone</b> até ficar <b>vermelho (ativado)</b> → <b>Iniciar Gravação</b>. <b>⚠️ Um toque simples grava SEM a sua voz</b>: tem que <b>segurar</b> o botão.</li>
         <li>Volte ao app e use narrando. Para parar: toque no <b>relógio/pílula vermelha</b> lá em cima → Parar.</li>
         <li>O vídeo vai para o app <b>Fotos</b>.</li></ol></div>
+      <p class="grav-dica" style="background:#fef3c7;color:#78350f;border-radius:10px;padding:8px 10px">⚠️ <b>Use UMA das duas</b>: a gravação de tela do iPhone <b>ou</b> o ⏺️ do app. As duas juntas disputam o microfone e o vídeo do iPhone sai <b>sem voz</b>.</p>
       <div class="grav-op"><b class="t">⏺️ 2. Gravar aqui no app (imagem do app + sua voz)</b>
         Grava a câmera com os objetos 3D, sem os botões, e o microfone junto. Bom para trechos "limpos".
         ${podeGravar ? '<button class="grav-bt" data-g="app">⏺️ Começar a gravar com narração</button>' : '<p class="grav-dica">⚠️ Este navegador não grava vídeo. Use a opção 1.</p>'}</div>
@@ -93,7 +94,7 @@ export function criarGravador({ compor, nome = 'decora-ra', botaoEm, classeBotao
         <li>Toque em <b>Compartilhar › Copiar link</b> e cole no <b>AVA Univirtus</b>.</li></ol>
         <p class="grav-dica">🔇 <b>Sem música</b> (o YouTube bloqueia por direitos autorais). Fale perto do microfone, em lugar silencioso. Vídeo em pé é aceito normalmente.</p></div>`);
     ligarOpcoes(f);
-    const b = f.querySelector('[data-g="app"]'); if (b) b.addEventListener('click', () => { f.remove(); comecar(); });
+    const b = f.querySelector('[data-g="app"]'); if (b) b.addEventListener('click', () => { if (!confirm('O ⏺️ do app vai usar o MICROFONE.\n\nSe a Gravação de Tela do iPhone estiver ligada, pare ela antes (senão ela fica sem a sua voz).\n\nComeçar a gravar pelo app?')) return; f.remove(); comecar(); });
   });
 
   async function comecar() {
