@@ -1,6 +1,27 @@
-# 🎬 Roteiro do vídeo (3 a 4 minutos, sem música)
+# 🎬 Roteiro do vídeo (3 a 5 minutos, sem música)
 
-Grave com a **Gravação de Tela do iPhone com o microfone ligado** e fale com as **suas palavras**. Os textos abaixo são só um guia.
+### ✅ O que o professor pede (Atividade Prática, Prof. Jadson) e onde o projeto atende
+| Pedido no enunciado | Como este projeto atende |
+|---|---|
+| Protótipo de **Realidade Aumentada** (Unity ou outro software) | WebAR no Safari: SLAM (sem placa), rastreamento de imagem (com placa), mapeamento com IA, RA nativa do iOS |
+| **Executar num celular** | Roda no iPhone pelo link do GitHub Pages (ícone na Tela de Início) |
+| **Gravar a tela do celular** com o app em execução | Gravação de Tela do iPhone com **microfone ligado** (veja "Como gravar" abaixo) |
+| **Vídeo explicativo** | Narração com a sua voz seguindo este roteiro + página 🧠 Como funciona |
+| Vídeo no **YouTube** e **link no AVA Univirtus** | Enviar como **Não listado** e colar o link no AVA |
+| **Sem músicas** (copyright) | Só a sua voz |
+| **Utilidade objetiva** | Ver móveis em tamanho real antes de comprar, medir a casa, planta em PDF, lista de materiais |
+| Pode lembrar um produto do mercado, **sem ser idêntico** | Inspirado no "Ver no seu ambiente" das lojas (Amazon, IKEA), mas com mapeamento, IA e VR próprios |
+| Exemplo do enunciado: **localizador com mapa no canto** ao apontar para uma imagem | Modo **📍 Com placa na parede** (mapa 3D no canto + rotas) e a **planta ao vivo** no canto do Mapear |
+| **Autoria própria** do vídeo e do projeto | Você grava e narra; os créditos de modelos e bibliotecas estão no LEIA-ME |
+
+### 🎥 Como gravar (3 opções)
+1. **📱 Gravação de Tela do iPhone (recomendado, é o que o enunciado pede):** Ajustes › Central de Controle › adicione **Gravação de Tela**. Na Central de Controle, **toque e segure** ⏺️ → **Microfone ativado (vermelho)** → Iniciar. Para parar, toque na pílula vermelha no topo. O vídeo vai para o **Fotos**.
+2. **🎬 Gravar dentro do app:** botão **🎬** no topo (Decorar, Mapear e VR) → *Começar a gravar com narração*. Grava a imagem do app (câmera + objetos 3D, sem os botões) **com a sua voz** pelo microfone e salva em **.mp4**. Ótimo para trechos "limpos" que você pode juntar no editor do próprio iPhone (Fotos › Editar) ou no YouTube.
+3. **💻 Computador:** Mac + cabo: QuickTime › Nova Gravação de Filme › câmera = iPhone. Windows: **OBS Studio** (Captura de janela + Microfone) ou **Xbox Game Bar** (Win + Alt + R; microfone Win + Alt + M).
+
+**Subir no YouTube:** app YouTube › **＋** › Enviar um vídeo → título e descrição → **Visibilidade: Não listado** → Enviar → **Compartilhar › Copiar link** → colar no **AVA Univirtus**.
+
+Fale com as **suas palavras**. Os textos abaixo são só um guia.
 Peso na nota: **projeto funcionando 40%**, **utilidade 30%**, **explicação 30%**.
 Dica: abra o app pelo **ícone na Tela de Início** (fica em tela cheia) e grave numa sala **bem iluminada**.
 
@@ -22,10 +43,10 @@ Dica: abra o app pelo **ícone na Tela de Início** (fica em tela cheia) e grave
 Toque em **🪄 Decorar o ambiente** → **Começar**. Aponte para o chão e mexa devagar.
 > "O app não precisa de placa nem de QR code: ele usa **SLAM**, que reconhece o ambiente pela câmera. Esses pontinhos verdes são pontos do chão que ele está acompanhando… pronto: **chão encontrado**."
 
-Escolha **Poltrona** e toque no chão. Ande em volta.
-> "Escolho uma poltrona e toco no chão: ela fica **parada no lugar**, mesmo quando eu ando em volta. Posso **arrastar**, **girar** e mudar o tamanho."
+Escolha **Sala → Sofá moderno**. Aparece a **ficha do produto** com as medidas, e o sofá "fantasma" segue o círculo da mira. Gire com **dois dedos** e toque em **📍 Colocar aqui**. Ande em volta.
+> "Igual ao **'Ver no seu ambiente'** das lojas: escolho o sofá, vejo a ficha com as **medidas reais**, miro o lugar e coloco. Ele fica **parado no lugar** mesmo quando eu ando em volta. Com dois dedos eu **giro 360°**, ou ajusto pela barra, grau por grau, e o app mostra as **medidas em centímetros** em cima do objeto."
 
-Coloque uma **Planta grande** e a **Mesa lateral**. Toque em **↻ girar** na poltrona.
+Coloque uma **Planta grande** e a **Mesa lateral**; use **⧉** para duplicar e **🎨** para trocar a cor.
 
 ### 4. Quadro na parede (1:25–1:55)
 Toque em **＋ superfície**, aponte para a parede e mexa devagar. Escolha **Parede → Quadro famoso** e toque na parede. Toque em **🎨 arte**.
@@ -60,6 +81,7 @@ Toque **🗺️** → toque numa parede da planta e digite a medida da **trena**
 Na planta, toque **🥽 Mobiliar em VR**: a casa **já abre mobiliada** pelo ✨ Mobiliar sozinho. Toque num móvel → **🎨** (troca a cor) e **⧉** (duplica); ponha um **lustre** e um **tapete**; em **🎨 Pintar**, troque a cor da parede e o piso.
 > "A planta que eu medi vira uma **casa em realidade virtual**, e o app já **mobilia cada cômodo sozinho**: a sala com sofá de frente para a TV, o quarto com cama e criados-mudos, a cozinha com balcão e geladeira. São **70 móveis**, a maioria escaneada de objetos reais. Eu troco o que quiser e pinto antes de comprar."
 
+Toque num móvel: gire pela **barra (0–359°)** ou com **dois dedos**, use **🧲 encostar** (vai de costas para a parede) e **🎯 ver**. Toque em **⬇️** para a **vista de cima**.
 Toque **🚶 Passear** e ande pela casa com o joystick, passando pela porta. Toque **🌙** para ver de noite. Mostre **👓 Óculos VR** por 3 segundos.
 > "E eu posso **andar por dentro** dela, até com óculos de realidade virtual. Então o projeto tem as duas coisas da disciplina: **realidade aumentada**, em cima da câmera, e **realidade virtual**, dentro da casa."
 

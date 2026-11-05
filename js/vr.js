@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { OrbitControls } from '../lib/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from '../lib/jsm/loaders/GLTFLoader.js';
 import { StereoEffect } from '../lib/jsm/effects/StereoEffect.js';
+import { criarGravador } from './gravador.js';
 
 window.THREE_MOVEIS = THREE; window.GLTFLOADER_MOVEIS = GLTFLoader;
 for (const arq of ['js/moveis_proc.js', 'js/moveis.js']) await new Promise((ok, erro) => { const s = document.createElement('script'); s.src = arq; s.onload = ok; s.onerror = erro; document.head.appendChild(s); });
@@ -405,14 +406,14 @@ function criarItem(d) {
       if (!o.material.transparent) { o.castShadow = true; o.receiveShadow = true; }
       if (!o.userData.sombra) { o.geometry.computeBoundingBox(); cx.union(o.geometry.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld))); }
     });
-    if (!cx.isEmpty()) { const s = cx.getSize(new THREE.Vector3()); if (Math.abs(s.x - d.w) > 0.02 || Math.abs(s.z - d.p) > 0.02) { d.w = +s.x.toFixed(2); d.p = +s.z.toFixed(2); salvarDepois(); } }
+    if (!cx.isEmpty()) { const s = cx.getSize(new THREE.Vector3()); d.h = +s.y.toFixed(2); if (Math.abs(s.x - d.w) > 0.02 || Math.abs(s.z - d.p) > 0.02) { d.w = +s.x.toFixed(2); d.p = +s.z.toFixed(2); salvarDepois(); } if (sel === w) selecionar(w); }
   });
   return w;
 }
 // na vista "casa de bonecas" as paredes estão cortadas a 1,25 m: o que fica acima disso some (lustre, quadro alto, cortina)
 function escondidoNaCasa(d) { const t = TIPOS[d.tipo]; return t.local === 'teto' || d.tipo === 'cortina' || (t.local === 'parede' && (d.y || 0) - t.dim[1] / 2 > 1.2); }
 let tSalvar = 0; const salvarDepois = () => { clearTimeout(tSalvar); tSalvar = setTimeout(salvar, 400); };
-function posItem(w) { const d = w.userData.d; w.position.set(d.x, d.y || 0, d.z); w.rotation.y = d.rot || 0; }
+function posItem(w) { const d = w.userData.d; w.position.set(d.x, d.y || 0, d.z); w.rotation.set(0, d.rot || 0, d.rz || 0); } // rz: giro no plano da parede (quadros)
 dados.itens.forEach(criarItem);
 const catalogo = Moveis.montarCatalogo($('catalogoVr'), id => {
   armado = armado === id ? null : id; catalogo.marcar(armado); desselecionar();
@@ -472,7 +473,7 @@ cv.addEventListener('pointermove', e => {
 });
 addEventListener('pointerup', e => {
   if (!toque || toque.id !== e.pointerId) return;
-  const foiToque = Math.hypot(e.clientX - toque.x, e.clientY - toque.y) < 10 && performance.now() - toque.t < 600;
+  const foiToque = Math.hypot(e.clientX - toque.x, e.clientY - toque.y) < 10 && performance.now() - toque.t < 600 && !torcer && dedosVr.size <= 1 && performance.now() - fimTorcao > 400;
   if (arrasto) { if (!foiToque) salvar(); arrasto = null; ctrl.enabled = true; }
   toque = null;
   if (foiToque && e.target === cv) tocar(e);
@@ -496,7 +497,9 @@ function selecionar(w) {
   desselecionar(); sel = w;
   helper = new THREE.BoxHelper(w, '#facc15'); helper.material.depthTest = false; helper.renderOrder = 20; cena.add(helper);
   const t = TIPOS[w.userData.d.tipo], v = w.userData.d.v || 0;
-  $('selNome').innerHTML = `${t.nome}${t.nomesVar && t.nomesVar[v] ? ` <small>· ${t.nomesVar[v]}</small>` : ''}<br><small>${t.local === 'parede' ? 'arraste pela parede' : 'arraste para mover'}</small>`;
+  const dd = w.userData.d, cm = x => Math.round(x * 100), alt = dd.h || t.dim[1];
+  $('selNome').innerHTML = `${t.nome}${t.nomesVar && t.nomesVar[v] ? ` <small>· ${t.nomesVar[v]}</small>` : ''}<br><small>📏 ${t.local === 'parede' ? `${cm(dd.w || t.dim[0])} × ${cm(alt)} cm` : `L ${cm(dd.w || t.dim[0])} × P ${cm(dd.p || t.dim[2])} × A ${cm(alt)} cm`} · ${t.local === 'parede' ? 'arraste pela parede' : 'arraste para mover · 2 dedos giram'}</small>`;
+  $('selEncostar').hidden = t.local !== 'chao'; sincronizarGiro();
   $('selVariar').hidden = t.variantes < 2;
   $('painelNormal').hidden = true; $('selecao').hidden = false; posJoy();
 }
@@ -504,9 +507,59 @@ function desselecionar() {
   if (helper) { cena.remove(helper); helper.dispose(); helper = null; }
   sel = null; $('painelNormal').hidden = false; $('selecao').hidden = true; posJoy();
 }
-const girarSel = a => { if (!sel) return; const d = sel.userData.d; if (TIPOS[d.tipo].local === 'parede') return; d.rot = (d.rot || 0) + a; posItem(sel); salvar(); };
-$('selGirar').addEventListener('click', () => girarSel(-Math.PI / 4));
-$('selGirarE').addEventListener('click', () => girarSel(Math.PI / 4));
+// ---------- giro livre de 360° (barra, botões de 15° e dois dedos) ----------
+const ehParede = d => TIPOS[d.tipo].local === 'parede';
+const giroDe = d => (ehParede(d) ? d.rz || 0 : d.rot || 0);
+function definirGiro(d, rad) { if (ehParede(d)) d.rz = rad; else d.rot = rad; }
+function sincronizarGiro() { if (!sel) return; const g = Math.round(((giroDe(sel.userData.d) * 180 / Math.PI) % 360 + 360) % 360) % 360; $('selFaixa').value = g; $('selGraus').textContent = g + '°'; }
+const girarSel = a => { if (!sel) return; const d = sel.userData.d; definirGiro(d, giroDe(d) + a); posItem(sel); sincronizarGiro(); salvarDepois(); };
+$('selGirar').addEventListener('click', () => girarSel(-Math.PI / 12));
+$('selGirarE').addEventListener('click', () => girarSel(Math.PI / 12));
+$('selFaixa').addEventListener('input', e => { if (!sel) return; const d = sel.userData.d; definirGiro(d, +e.target.value * Math.PI / 180); posItem(sel); $('selGraus').textContent = e.target.value + '°'; salvarDepois(); });
+// 🧲 encostar: o móvel vai de costas para a parede mais próxima, alinhado com ela
+$('selEncostar').addEventListener('click', () => {
+  if (!sel) return; const d = sel.userData.d, cm = noComodo(d) || comodos[0]; let melhor = null;
+  for (let i = 0; i < cm.cantos.length; i++) { const w = parede(cm, i), t = Math.max(0, Math.min(1, dot(sub(d, w.a), w.u) / w.L)), q = add(w.a, mul(w.u, t * w.L)), di = dist(d, q); if (!melhor || di < melhor.di) melhor = { w, q, di, t }; }
+  const { w } = melhor, prof = (d.p || TIPOS[d.tipo].dim[2]) / 2 + 0.02, larg = (d.w || TIPOS[d.tipo].dim[0]) / 2;
+  const s = Math.max(larg, Math.min(w.L - larg, melhor.t * w.L)), q = add(add(w.a, mul(w.u, s)), mul(w.n, prof));
+  d.x = q.x; d.z = q.z; d.rot = Math.atan2(w.n.x, w.n.z); posItem(sel); sincronizarGiro(); salvar(); aviso('🧲 Encostado na parede');
+});
+// 🎯 ver de perto: a câmera vai até o móvel
+let voo = null;
+$('selFocar').addEventListener('click', () => {
+  if (!sel) return; const d = sel.userData.d;
+  if (modo === 'casa') { const alvo = new THREE.Vector3(d.x, 0.4, d.z), dir = camCasa.position.clone().sub(ctrl.target).normalize(); voo = { t0: performance.now(), de: ctrl.target.clone(), para: alvo, cDe: camCasa.position.clone(), cPara: alvo.clone().addScaledVector(dir, 4.6) }; }
+  else { eu.yaw = Math.atan2(-(d.x - eu.x), -(d.z - eu.z)); eu.pitch = -0.35; }
+});
+// ⬇️ vista de cima (planta "viva"), ótima para arrumar com precisão
+$('btnCima').addEventListener('click', () => {
+  if (modo !== 'casa') trocarModo('casa');
+  const alto = Math.abs(camCasa.position.y - ctrl.target.y) > camCasa.position.distanceTo(ctrl.target) * 0.97;
+  const t = alto ? ctrl.target.clone() : new THREE.Vector3(CX, 0, CZ), sx = B.x1 - B.x0 + 1.2, sz = B.z1 - B.z0 + 1.2;
+  const mV = 22.5 * d2r, mH = Math.atan(Math.tan(mV) * camCasa.aspect), deitar = (sx > sz) === (camCasa.aspect < 1); // casa "deitada" na tela em pé: gira 90°
+  const [lx, lz] = deitar ? [sz, sx] : [sx, sz], dd = Math.max(lx / 2 / Math.tan(mH), lz / 2 / Math.tan(mV) * 1.3, 5);
+  voo = { t0: performance.now(), de: ctrl.target.clone(), para: t.clone(), cDe: camCasa.position.clone(), cPara: alto ? t.clone().add(new THREE.Vector3(TAM * 0.8, TAM * 1.3, TAM * 0.9)) : t.clone().add(new THREE.Vector3(deitar ? 0.01 : 0, dd, deitar ? 0 : 0.01)) };
+});
+function animarVoo(t) {
+  if (!voo) return; const k = Math.min(1, (t - voo.t0) / 600), e = k * k * (3 - 2 * k);
+  ctrl.target.lerpVectors(voo.de, voo.para, e); camCasa.position.lerpVectors(voo.cDe, voo.cPara, e); if (k >= 1) voo = null;
+}
+// dois dedos no móvel selecionado: giram o móvel (e não a câmera)
+const dedosVr = new Map(); let torcer = null, fimTorcao = 0;
+cv.addEventListener('pointerdown', e => {
+  dedosVr.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (dedosVr.size === 2 && sel) { const [a, b] = [...dedosVr.values()]; torcer = { ang: Math.atan2(b.y - a.y, b.x - a.x), rot: giroDe(sel.userData.d) }; ctrl.enabled = false; arrasto = null; }
+}, true);
+cv.addEventListener('pointermove', e => {
+  if (!dedosVr.has(e.pointerId)) return; dedosVr.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (torcer && sel && dedosVr.size >= 2) {
+    const [a, b] = [...dedosVr.values()]; let g = torcer.rot - (Math.atan2(b.y - a.y, b.x - a.x) - torcer.ang);
+    const graus = ((g * 180 / Math.PI) % 360 + 360) % 360, perto = Math.round(graus / 45) * 45; if (Math.abs(graus - perto) < 4) g = perto * Math.PI / 180;
+    definirGiro(sel.userData.d, g); posItem(sel); sincronizarGiro(); e.stopImmediatePropagation();
+  }
+}, true);
+const soltarVr = e => { dedosVr.delete(e.pointerId); if (dedosVr.size < 2 && torcer) { torcer = null; fimTorcao = performance.now(); ctrl.enabled = true; salvarDepois(); } };
+addEventListener('pointerup', soltarVr, true); addEventListener('pointercancel', soltarVr, true);
 $('selOk').addEventListener('click', desselecionar);
 function trocarItem(w, d) { const i = itensG.children.indexOf(w); itensG.remove(w); const n = criarItem(d); itensG.children.splice(itensG.children.indexOf(n), 1); itensG.children.splice(i, 0, n); return n; }
 $('selVariar').addEventListener('click', () => { // 🎨 próxima cor / estampa / obra
@@ -723,12 +776,16 @@ if (!dados.itens.length && !dados.autoFeito && !new URLSearchParams(location.sea
 $('carregandoVr').hidden = true;
 
 let tAnt = performance.now(), comodoAntes = null;
+criarGravador({ nome: 'casa-vr', botaoEm: $('lado'), classeBotao: '', compor(g, W2, H2) {
+  g.drawImage(cv, 0, 0, W2, H2);
+  g.font = `800 ${W2 / 26}px -apple-system, Segoe UI, Arial`; g.fillStyle = 'rgba(255,255,255,.9)'; g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 6; g.fillText('🥽 Casa em VR · Decora RA', W2 * 0.04, H2 - H2 * 0.03); g.shadowBlur = 0;
+} });
 let externo = null; // simulador do Mapear: a câmera segue a pose do celular simulado
 function quadro(t) {
   requestAnimationFrame(quadro);
   const dt = Math.min(0.05, (t - tAnt) / 1000); tAnt = t;
   if (externo) { camAndar.position.set(externo.x, externo.y, externo.z); camAndar.quaternion.set(...externo.q); renderer.render(cena, camAndar); return; }
-  if (modo === 'casa') { ctrl.update(); renderer.render(cena, camCasa); }
+  if (modo === 'casa') { animarVoo(t); ctrl.update(); renderer.render(cena, camCasa); }
   else {
     atualizarAndar(dt);
     if (modo === 'oculos') stereo.render(cena, camAndar); else renderer.render(cena, camAndar);
@@ -742,7 +799,7 @@ requestAnimationFrame(quadro);
 window.VR = {
   dados, eu, comodos, trocarModo, pintar, trocarPiso, abaPainel, aplicarLuz: n => { noite = n; aplicarLuz(); },
   colocar(tipo, x, z, rot = 0) { const d = { id: 't' + dados.itens.length, tipo, v: 0, x, y: 0, z, rot }; dados.itens.push(d); salvar(); return criarItem(d).userData.d; },
-  olhar(yaw, pitch) { eu.yaw = yaw; eu.pitch = pitch; }, mobiliarSozinho, planejar,
+  olhar(yaw, pitch) { eu.yaw = yaw; eu.pitch = pitch; }, cam: () => ({ p: camCasa.position.toArray().map(v => +v.toFixed(2)), t: ctrl.target.toArray().map(v => +v.toFixed(2)), TAM }), mobiliarSozinho, planejar, selecionar: i => selecionar(itensG.children[i]), sel: () => sel,
   pose(x, y, z, q, fov, agora) {
     externo = { x, y, z, q }; if (fov && Math.abs(camAndar.fov - fov) > 0.01) { camAndar.fov = fov; camAndar.updateProjectionMatrix(); }
     if (agora) { camAndar.position.set(x, y, z); camAndar.quaternion.set(...q); renderer.render(cena, camAndar); return cv; } // quadro exato desta pose

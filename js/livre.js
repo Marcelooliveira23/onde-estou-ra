@@ -16,6 +16,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from '../lib/jsm/loaders/GLTFLoader.js';
 import { AlvaAR } from '../lib/alva_ar.js';
+import { criarGravador, cobrir } from './gravador.js';
 
 window.THREE_MOVEIS = THREE; window.GLTFLOADER_MOVEIS = GLTFLoader;
 for (const arq of ['js/moveis_proc.js', 'js/moveis.js']) await new Promise((ok, erro) => { const s = document.createElement('script'); s.src = arq; s.onload = ok; s.onerror = erro; document.head.appendChild(s); });
@@ -54,7 +55,7 @@ function cimaNaCamera() { // vetor "para cima" do mundo, em coordenadas da câme
 }
 
 // ---------- três.js ----------
-const renderer = new THREE.WebGLRenderer({ canvas: $('gl'), antialias: true, alpha: true });
+const renderer = new THREE.WebGLRenderer({ canvas: $('gl'), antialias: true, alpha: true, preserveDrawingBuffer: true }); // preserve: para foto e gravação
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
@@ -170,7 +171,9 @@ function desenhar(t) {
   const agora = new Date();
   for (const it of itens) { const f = it.children[0] && it.children[0].userData.atualizar; if (f) f(agora); }
   for (const p of planos) p.userData.anel.material.opacity = 0.35 + 0.15 * Math.sin(t / 300);
+  atualizarPrevia();
   renderer.render(cena, camera);
+  mostrarMedidas();
 }
 function pontosVerdes(poucos) { // pontos que o SLAM está seguindo (feedback de "reconhecendo")
   if (poucos) return;
@@ -279,16 +282,17 @@ function planoMaisProximo() {
 
 $('gl').addEventListener('pointerdown', e => {
   dedos.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  if (dedos.size === 2 && estado.sel) {
+  if (dedos.size === 2 && (estado.sel || (estado.armado && previa))) { // pinça = tamanho · girar os 2 dedos = girar o objeto (360°)
     const [a, b] = [...dedos.values()];
-    pinca = { d: Math.hypot(a.x - b.x, a.y - b.y), esc: estado.sel.userData.esc }; arrasto = null; return;
+    pinca = { d: Math.hypot(a.x - b.x, a.y - b.y), esc: estado.sel ? estado.sel.userData.esc : 1, ang: Math.atan2(b.y - a.y, b.x - a.x), rot: estado.sel ? girarDe(estado.sel) : previa.rot }; arrasto = null; return;
   }
+  if (dedos.size > 1) return;
   if (!estado.rastreando || !planos.length) return;
   raio(e);
   if (estado.armado) {
     const alvo = planoMaisProximo();
     if (!alvo) { aviso('Toque em cima da superfície encontrada', '#0f172a'); return; }
-    colocar(estado.armado, alvo.g, alvo.p); estado.armado = null; ui(); return;
+    colocar(estado.armado, alvo.g, alvo.p, previa ? previa.rot : 0); estado.armado = null; tirarPrevia(); ui(); return;
   }
   const hits = ray.intersectObjects(itens, true);
   if (hits.length) {
@@ -303,10 +307,16 @@ $('gl').addEventListener('pointerdown', e => {
 window.addEventListener('pointermove', e => {
   if (!dedos.has(e.pointerId)) return;
   dedos.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  if (pinca && estado.sel && dedos.size >= 2) {
+  if (pinca && dedos.size >= 2) {
     const [a, b] = [...dedos.values()];
-    estado.sel.userData.esc = THREE.MathUtils.clamp(pinca.esc * Math.hypot(a.x - b.x, a.y - b.y) / pinca.d, 0.2, 4);
-    estado.sel.scale.setScalar(estado.sel.userData.esc); return;
+    let giro = pinca.rot - (Math.atan2(b.y - a.y, b.x - a.x) - pinca.ang);
+    const graus = ((giro * 180 / Math.PI) % 360 + 360) % 360, perto = Math.round(graus / 45) * 45;
+    if (Math.abs(graus - perto) < 4) giro = perto * Math.PI / 180; // ímã nos 0°, 45°, 90°…
+    if (estado.sel) {
+      estado.sel.userData.esc = THREE.MathUtils.clamp(pinca.esc * Math.hypot(a.x - b.x, a.y - b.y) / pinca.d, 0.2, 4);
+      estado.sel.scale.setScalar(estado.sel.userData.esc); girar(estado.sel, giro);
+    } else if (previa) previa.rot = giro;
+    return;
   }
   if (!arrasto || !estado.rastreando) return;
   raio(e);
@@ -317,19 +327,22 @@ const soltar = e => { dedos.delete(e.pointerId); if (dedos.size < 2) pinca = nul
 window.addEventListener('pointerup', soltar);
 window.addEventListener('pointercancel', soltar);
 
-function colocar(tipo, g, p) {
-  const o = new THREE.Group();
-  const m = Moveis.criar(tipo, 0);
-  o.add(m);
-  o.userData = { tipo, v: 0, esc: 1 };
-  m.userData.pronto.then(() => { if (estado.sel === o) { caixaSel.setFromObject(o); ui(); } });
+function posicionarNovo(o, tipo, g, p) {
   o.position.set(p.x, g.userData.chao ? 0 : p.y, g.userData.chao ? p.z : 0.004);
   if (!g.userData.chao && TIPOS[tipo].local === 'chao') { // item de chão numa parede: fica "em pé" encostado nela
     o.rotation.x = Math.PI / 2; o.position.z = 0.25;
   }
   if (g.userData.chao && TIPOS[tipo].local === 'parede') o.position.y = TIPOS[tipo].dim[1] / 2; // quadro no chão: apoiado, em pé
   if (g.userData.chao && TIPOS[tipo].local === 'teto') o.position.y = 2.55; // lustre/pendente: pendurado no teto, acima do ponto tocado
-  g.add(o); itens.push(o);
+}
+function colocar(tipo, g, p, rot = 0) {
+  const o = new THREE.Group();
+  const m = Moveis.criar(tipo, 0);
+  o.add(m);
+  o.userData = { tipo, v: 0, esc: 1 };
+  m.userData.pronto.then(() => { o.userData.dims = null; if (estado.sel === o) { caixaSel.setFromObject(o); ui(); } });
+  posicionarNovo(o, tipo, g, p); g.add(o); girar(o, rot);
+  itens.push(o);
   g.userData.visuais.forEach(v => { v.visible = false; }); // some o anel depois do 1º objeto
   if (navigator.vibrate) navigator.vibrate(30);
   selecionar(o);
@@ -362,22 +375,90 @@ function ui() {
   else if (estado.sel) {
     const t = TIPOS[estado.sel.userData.tipo], leg = estado.sel.children[0].userData.legenda;
     $('btnVariar').hidden = t.variantes < 2; $('btnVariar').textContent = t.gera === 'tapete' ? '🎨 estampa' : t.proc === 'relogio' || t.gera ? '🎨 cor' : '🎨 arte';
-    $('btnGirar').hidden = !estado.sel.parent.userData.chao;
-    dica(`<b>${t.nome}</b>${leg ? ` · <i>${leg}</i>` : ''}<br><small>Arraste para mover · pinça ou − + para o tamanho</small>`);
+
+    dica(`<b>${t.nome}</b>${leg ? ` · <i>${leg}</i>` : ''}<br><small>Arraste para mover · <b>gire com 2 dedos</b> ou na barra (360°) · pinça ou − + para o tamanho</small>`);
+    sincronizarGiro();
   }
-  else if (estado.armado) { const t = TIPOS[estado.armado]; dica(`👆 Toque ${t.local === 'parede' ? 'na <b>parede</b>' : 'no <b>chão</b>'} onde quer: <b>${t.nome}</b>${t.local === 'parede' && !planos.some(p => !p.userData.chao) ? '<br><small>Ainda não achei uma parede: toque em ＋ superfície e aponte para ela.</small>' : ''}`); }
+  else if (estado.armado) { // ficha do produto, como numa loja
+    const t = TIPOS[estado.armado], d = t.dim, cm = v => Math.round(v * 100);
+    dica(`<div class="ficha"><img src="${t.foto}" alt=""><div><b>${t.nome}</b><small>${t.local === 'parede' ? `${cm(d[0])} × ${cm(d[1])} cm` : `L ${cm(d[0])} × P ${cm(d[2])} × A ${cm(d[1])} cm`}</small><small>${t.cat}${t.variantes > 1 ? ` · ${t.variantes} opções de ${t.gera === 'tapete' ? 'estampa' : t.gera || t.proc === 'relogio' ? 'cor' : 'obra'}` : ''}</small></div></div>
+      <div class="ficha-acoes"><button id="btnColocar">📍 Colocar aqui</button><button id="btnCancelarFicha">✕</button></div>
+      <small>Mire o ponto ${t.local === 'parede' ? 'da <b>parede</b>' : 'do <b>chão</b>'} com o círculo e toque em <b>Colocar</b> (ou toque direto no lugar). <b>Dois dedos giram</b> antes de colocar.${t.local === 'parede' && !planos.some(p => !p.userData.chao) ? ' Ainda não achei uma parede: toque em ＋ superfície.' : ''}</small>`); }
   else dica('Escolha um item e toque no lugar. Para a <b>parede</b>, toque em <b>＋ superfície</b> e aponte para ela.');
   if (catalogo) catalogo.marcar(estado.armado);
 }
 let catalogo = null;
 function montarCatalogo() {
   catalogo = Moveis.montarCatalogo($('catalogo'), id => {
-    estado.armado = estado.armado === id ? null : id;
+    estado.armado = estado.armado === id ? null : id; if (!estado.armado) tirarPrevia();
     if (estado.armado && TIPOS[id].gltf) Moveis.carregarGltf(TIPOS[id].gltf); // já começa a baixar
     selecionar(null);
   });
 }
-$('btnGirar').onclick = () => { const o = estado.sel; if (o) { o.rotation.y += Math.PI / 4; caixaSel.setFromObject(o); } };
+// ---------- giro livre de 360° ----------
+const noChao = o => o.parent && o.parent.userData.chao && Math.abs(o.rotation.x) < 0.01;
+function girarDe(o) { return noChao(o) ? o.rotation.y : o.rotation.z; }
+function girar(o, rad) { if (noChao(o)) o.rotation.y = rad; else o.rotation.z = rad; if (o === estado.sel) { caixaSel.setFromObject(o); sincronizarGiro(); } }
+function sincronizarGiro() {
+  if (!estado.sel) return; const g = Math.round((((girarDe(estado.sel) * 180 / Math.PI) % 360) + 360) % 360) % 360;
+  $('faixaGiro').value = g; $('grausTxt').textContent = g + '°';
+}
+$('faixaGiro').addEventListener('input', e => { const o = estado.sel; if (o) girar(o, -(+e.target.value) * Math.PI / 180 * -1); });
+$('btnGirar').onclick = () => { const o = estado.sel; if (o) girar(o, girarDe(o) - Math.PI / 12); };
+$('btnGirarE').onclick = () => { const o = estado.sel; if (o) girar(o, girarDe(o) + Math.PI / 12); };
+// ---------- 📏 medidas do objeto (largura × profundidade × altura), como nas lojas ----------
+let verMedidas = true;
+function dimsDe(o) {
+  o.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(o.matrixWorld).invert(), b = new THREE.Box3();
+  o.traverse(m => { if (m.isMesh && !m.userData.sombra && m.geometry) { if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); b.union(m.geometry.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld))); } });
+  return b.isEmpty() ? null : b.getSize(new THREE.Vector3());
+}
+const caixaTmp = new THREE.Box3(), vTmp = new THREE.Vector3();
+function mostrarMedidas() {
+  const el = $('medidaSel'), o = estado.sel;
+  if (!o || !verMedidas || !estado.rastreando) { el.hidden = true; return; }
+  if (!o.userData.dims) o.userData.dims = dimsDe(o);
+  const s = o.userData.dims; if (!s) { el.hidden = true; return; }
+  const k = o.userData.esc || 1, cm = v => Math.round(v * k * 100);
+  el.textContent = noChao(o) || TIPOS[o.userData.tipo].local !== 'parede' ? `${cm(s.x)} × ${cm(s.z)} × ${cm(s.y)} cm` : `${cm(s.x)} × ${cm(s.y)} cm`;
+  caixaTmp.setFromObject(o); caixaTmp.getCenter(vTmp); vTmp.y = caixaTmp.max.y; vTmp.project(camera);
+  if (vTmp.z > 1) { el.hidden = true; return; }
+  el.style.left = ((vTmp.x + 1) / 2 * W) + 'px'; el.style.top = Math.max(70, (1 - vTmp.y) / 2 * H - 18) + 'px'; el.hidden = false;
+}
+$('btnMedidas').onclick = () => { verMedidas = !verMedidas; $('btnMedidas').classList.toggle('ligado', verMedidas); };
+// ---------- prévia "fantasma" na mira (como o "Ver no seu ambiente" das lojas) ----------
+let previa = null;
+const centroTela = new THREE.Vector2(0, 1 - 2 * 0.33); // a mira fica a 1/3 da altura (acima do painel)
+function fantasmear(m) {
+  m.traverse(o => { if (o.isMesh && !o.userData.sombra) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.55; o.material.depthWrite = false; } });
+}
+function tirarPrevia() { if (previa && previa.o.parent) previa.o.parent.remove(previa.o); previa = null; $('miraLivre').hidden = true; }
+function atualizarPrevia() {
+  const tipo = estado.armado;
+  if (!tipo || !planos.length || !estado.rastreando) { if (previa) previa.o.visible = false; $('miraLivre').hidden = !tipo; return; }
+  if (!previa || previa.tipo !== tipo) {
+    tirarPrevia(); const o = new THREE.Group(), m = Moveis.criar(tipo, 0); o.add(m); fantasmear(m); m.userData.pronto.then(() => fantasmear(m));
+    previa = { tipo, o, rot: 0 };
+  }
+  $('miraLivre').hidden = false;
+  ray.setFromCamera(centroTela, camera);
+  const alvo = planoMaisProximo(); previa.alvo = alvo;
+  $('miraLivre').classList.toggle('ok', !!alvo);
+  if (!alvo) { previa.o.visible = false; return; }
+  if (previa.o.parent !== alvo.g) alvo.g.add(previa.o);
+  previa.o.rotation.set(0, 0, 0); posicionarNovo(previa.o, tipo, alvo.g, alvo.p);
+  if (alvo.g.userData.chao && Math.abs(previa.o.rotation.x) < 0.01) previa.o.rotation.y = previa.rot; else previa.o.rotation.z = previa.rot;
+  previa.o.visible = true;
+}
+function colocarNaMira() {
+  if (!previa || !previa.alvo) return aviso('Mire a <b>superfície</b> (círculo verde) e tente de novo', '#0f172a');
+  colocar(estado.armado, previa.alvo.g, previa.alvo.p, previa.rot); estado.armado = null; tirarPrevia(); ui();
+}
+$('dica').addEventListener('click', e => {
+  if (e.target.closest('#btnColocar')) colocarNaMira();
+  else if (e.target.closest('#btnCancelarFicha')) { estado.armado = null; tirarPrevia(); ui(); }
+});
+window.addEventListener('keydown', e => { if (e.key === 'Enter' && estado.armado) colocarNaMira(); });
 $('btnMenor').onclick = () => { const o = estado.sel; if (o) { o.userData.esc = Math.max(0.2, o.userData.esc / 1.15); o.scale.setScalar(o.userData.esc); } };
 $('btnMaior').onclick = () => { const o = estado.sel; if (o) { o.userData.esc = Math.min(4, o.userData.esc * 1.15); o.scale.setScalar(o.userData.esc); } };
 $('btnVariar').onclick = () => {
@@ -447,5 +528,12 @@ $('btnFoto').onclick = () => {
   window.ULTIMA_FOTO = url;
 };
 
+// 🎬 gravar vídeo com narração (câmera + objetos 3D + a voz)
+criarGravador({ nome: 'decora-ra', botaoEm: $('topo'), compor(g, W2, H2) {
+  if (estado.modo !== 'giro' || video.readyState >= 2) cobrir(g, video, W2, H2);
+  g.drawImage($('gl'), 0, 0, W2, H2);
+  g.font = `800 ${W2 / 26}px -apple-system, Segoe UI, Arial`; g.fillStyle = 'rgba(255,255,255,.85)'; g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 6; g.fillText('🛋️ Decora RA', W2 * 0.04, H2 * 0.05); g.shadowBlur = 0;
+} });
+
 // para os testes automáticos
-window.LIVRE = { estado, planos, itens, armar: t => { estado.armado = t; ui(); }, modoRapido };
+window.LIVRE = { estado, planos, itens, armar: t => { estado.armado = t; ui(); }, modoRapido, colocarNaMira, girar, girarDe, previa: () => previa };

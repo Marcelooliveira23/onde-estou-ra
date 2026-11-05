@@ -22,6 +22,7 @@
  */
 import * as THREE from 'three';
 import { OrbitControls } from '../lib/jsm/controls/OrbitControls.js';
+import { criarGravador, cobrir, noLugar, balao } from './gravador.js';
 
 const $ = id => document.getElementById(id);
 const PARAM = new URLSearchParams(location.search);
@@ -147,7 +148,7 @@ function ouvirOrientacao() {
 }
 
 // ---------- três.js: desenho em RA por cima da câmera ----------
-const renderer = new THREE.WebGLRenderer({ canvas: $('gl'), antialias: true, alpha: true });
+const renderer = new THREE.WebGLRenderer({ canvas: $('gl'), antialias: true, alpha: true, preserveDrawingBuffer: true }); // preserve: gravação
 renderer.setPixelRatio(dpr);
 const cena = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 100);
@@ -1304,6 +1305,23 @@ $('gl').addEventListener('pointermove', e => {
   estado.yaw += (e.clientX - arrasto.x) * 0.25; estado.pitch = Math.max(-85, Math.min(30, estado.pitch + (e.clientY - arrasto.y) * 0.25));
   arrasto = { x: e.clientX, y: e.clientY };
 });
+
+// 🎬 gravar vídeo com narração: câmera + desenho em RA + visão da IA + planta ao vivo + mira
+criarGravador({ nome: 'mapear-casa', botaoEm: $('topo'), compor(g, W2, H2) {
+  const k = W2 / innerWidth;
+  if (simVR) g.drawImage(simVR.fr.contentDocument.getElementById('vr'), 0, 0, W2, H2); else cobrir(g, video, W2, H2);
+  if (!iaCv.hidden && IA) { g.globalAlpha = 0.5; g.drawImage(iaCv, 0, 0, W2, H2); g.globalAlpha = 1; }
+  g.drawImage($('gl'), 0, 0, W2, H2);
+  if (!$('hud').hidden) {
+    const r = $('miniCaixa').getBoundingClientRect(); g.fillStyle = 'rgba(255,255,255,.93)'; g.beginPath(); g.roundRect(r.left * k, r.top * k, r.width * k, r.height * k, 14 * k); g.fill();
+    noLugar(g, $('mini'), W2);
+    g.strokeStyle = $('mira').classList.contains('ok') ? '#4ade80' : '#fff'; g.lineWidth = 3 * k; g.beginPath(); g.arc(W2 / 2, H2 / 2, 23 * k, 0, 7); g.stroke();
+    g.beginPath(); g.moveTo(W2 / 2, H2 / 2 - 35 * k); g.lineTo(W2 / 2, H2 / 2 + 35 * k); g.moveTo(W2 / 2 - 35 * k, H2 / 2); g.lineTo(W2 / 2 + 35 * k, H2 / 2); g.lineWidth = 2 * k; g.stroke();
+    const txt = $('miraTxt').textContent; if (txt) balao(g, txt, W2 / 2, H2 / 2 + 48 * k, k);
+    if (!$('iaChip').hidden) balao(g, $('iaChip').textContent, W2 * 0.3, (r.top + r.height + 24) * k, k);
+  }
+  g.font = `800 ${W2 / 26}px -apple-system, Segoe UI, Arial`; g.fillStyle = 'rgba(255,255,255,.9)'; g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 6; g.fillText('🗺️ Mapear a casa · Decora RA', W2 * 0.04, H2 - H2 * 0.03); g.shadowBlur = 0;
+} });
 
 // para testes automáticos e demonstração no PC
 window.MAPA = {

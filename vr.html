@@ -42,7 +42,12 @@
   .comodos-chips { display: flex; gap: 6px; overflow-x: auto; margin-top: 6px; }
   .comodos-chips button { flex: none; font: inherit; font-size: 13px; font-weight: 800; padding: 6px 11px; border-radius: 99px; border: 2px solid #0f172a; background: #fff; }
   .comodos-chips button.ativo { background: #0f172a; color: #fff; }
-  #selecao { display: flex; align-items: center; gap: 5px; }
+  #selecao { display: flex; flex-direction: column; gap: 7px; }
+  .sel-l1, .sel-l3 { display: flex; align-items: center; gap: 5px; }
+  .sel-l3 button { flex: 1; padding: 8px 4px !important; font-size: 13px !important; }
+  .giro-linha { display: flex; align-items: center; gap: 6px; }
+  .giro-linha input { flex: 1; accent-color: #2563eb; }
+  .giro-linha b { min-width: 40px; text-align: right; }
   #selecao b small { font-weight: 600; color: #64748b; font-size: 12px; }
   .auto { display: flex; gap: 6px; margin-top: 8px; }
   .auto button { font: inherit; font-weight: 800; font-size: 13.5px; border: 0; border-radius: 12px; padding: 9px 12px; background: linear-gradient(135deg, #7c3aed, #2563eb); color: #fff; flex: 1; }
@@ -77,6 +82,7 @@
 <div id="lado" class="ui">
   <button id="btnNoite" title="Dia / noite">🌙</button>
   <button id="btnGiro" title="Olhar mexendo o celular" hidden>📱</button>
+  <button id="btnCima" title="Vista de cima">⬇️</button>
   <button id="btnFoto" title="Foto">📸</button>
 </div>
 <div id="mira3d" class="ui" hidden></div>
@@ -94,7 +100,11 @@
       </div>
     </div>
   </div>
-  <div id="selecao" hidden><b id="selNome"></b><button id="selVariar" title="cor / estampa">🎨</button><button id="selDuplicar" title="duplicar">⧉</button><button id="selGirarE">↺</button><button id="selGirar">↻</button><button id="selApagar" class="apagar">🗑️</button><button id="selOk" class="ok">✔</button></div>
+  <div id="selecao" hidden>
+    <div class="sel-l1"><b id="selNome"></b><button id="selOk" class="ok">✔</button></div>
+    <div class="giro-linha"><button id="selGirarE" title="girar 15° para a esquerda">↺</button><input id="selFaixa" type="range" min="0" max="359" step="1" value="0" aria-label="giro"><button id="selGirar" title="girar 15° para a direita">↻</button><b id="selGraus">0°</b></div>
+    <div class="sel-l3"><button id="selVariar" title="cor / estampa">🎨 cor</button><button id="selDuplicar" title="duplicar">⧉</button><button id="selEncostar" title="encostar na parede">🧲 encostar</button><button id="selFocar" title="ver de perto">🎯 ver</button><button id="selApagar" class="apagar">🗑️</button></div>
+  </div>
 </div>
 
 <button id="sairVr" class="ui" hidden>✕</button>

@@ -136,6 +136,18 @@ No GitHub, abra o arquivo (ex.: `config.js`) → ícone ✏️ → edite → **C
 
 ---
 
+## 🛒 Colocar um móvel como nas lojas (modo Decorar, sem placa)
+1. Escolha o móvel: aparece a **ficha do produto** (foto, **L × P × A em cm**, opções de cor).
+2. O móvel aparece **"fantasma"** no **círculo da mira** (1/3 da tela, acima do painel). Mire o lugar no chão (ou na parede, para quadros).
+3. **Dois dedos giram** antes de colocar. Toque em **📍 Colocar aqui** (ou toque direto no lugar).
+4. Depois de colocado: **arraste** para mover; **gire 360°** com dois dedos ou pela **barra de graus** (↺ ↻ de 15 em 15°; o giro "gruda" em 0°, 45°, 90°…); **pinça** ou − + para o tamanho; **📏** mostra as medidas em cima do objeto; **🎨** troca a cor; **⧉** duplica; **🗑️** remove.
+5. No **🥽 VR** é igual, e ainda tem **🧲 encostar** (o móvel vai de costas para a parede mais próxima, alinhado), **🎯 ver** (a câmera vai até o móvel) e **⬇️ vista de cima** (a casa inteira, para arrumar com precisão).
+
+## 🎬 Gravar o vídeo com a sua narração
+- **Recomendado:** Gravação de Tela do iPhone com **Microfone ativado** (Central de Controle → toque e segure ⏺️). É o que o enunciado pede.
+- **No app:** botão **🎬** (Decorar, Mapear, VR) → grava a imagem do app **com a sua voz** em .mp4 → **Salvar Vídeo** (vai para o Fotos).
+- Depois: YouTube › ＋ › Enviar → **Não listado** → copiar o link → AVA Univirtus. **Sem música.**
+
 ## 🛋️ Usar o modo Decorar no iPhone
 
 1. Aponte para a placa e toque em **🛋️** (ao lado do 🔊). A maquete some e aparece a barra de decoração.
