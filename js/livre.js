@@ -646,7 +646,7 @@ function rotuloMovel(txt) {
   const cv = document.createElement('canvas'); cv.width = 512; cv.height = 110; const c = cv.getContext('2d');
   c.fillStyle = 'rgba(15,23,42,.85)'; c.beginPath(); c.roundRect(4, 4, 504, 102, 50); c.fill(); c.strokeStyle = '#facc15'; c.lineWidth = 6; c.stroke();
   c.fillStyle = '#fff'; c.font = '700 44px -apple-system, Segoe UI, Arial'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(txt, 256, 57);
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false, sizeAttenuation: false })); s.scale.set(0.3, 0.065, 1); // mesmo tamanho na tela, perto ou longe s.renderOrder = 15; return s;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false, sizeAttenuation: false })); s.scale.set(0.3, 0.065, 1); s.renderOrder = 15; return s; // mesmo tamanho na tela, perto ou longe
 }
 function mostrarDetectados(g) {
   const ok = detectados.filter(d => d.n >= 2);
