@@ -16,7 +16,7 @@ import { GLTFLoader } from '../lib/jsm/loaders/GLTFLoader.js';
 import { StereoEffect } from '../lib/jsm/effects/StereoEffect.js';
 
 window.THREE_MOVEIS = THREE; window.GLTFLOADER_MOVEIS = GLTFLoader;
-await new Promise((ok, erro) => { const s = document.createElement('script'); s.src = 'js/moveis.js'; s.onload = ok; s.onerror = erro; document.head.appendChild(s); });
+for (const arq of ['js/moveis_proc.js', 'js/moveis.js']) await new Promise((ok, erro) => { const s = document.createElement('script'); s.src = arq; s.onload = ok; s.onerror = erro; document.head.appendChild(s); });
 const Moveis = window.Moveis, TIPOS = Moveis.TIPOS;
 
 const $ = id => document.getElementById(id);
@@ -312,6 +312,8 @@ function trocarModo(m) {
   $('joy').hidden = m !== 'andar'; $('btnGiro').hidden = m !== 'andar';
   document.body.classList.toggle('oculos', m === 'oculos'); $('sairVr').hidden = m !== 'oculos';
   if (m !== 'oculos') { $('dicaOculos').hidden = true; renderer.setScissorTest(false); ajustar(); }
+  itensG.children.forEach(w => { w.visible = !(m === 'casa' && escondidoNaCasa(w.userData.d)); });
+  $('btnAuto').textContent = m === 'casa' ? '✨ Mobiliar a casa toda' : '✨ Mobiliar este cômodo';
   eu.alvo = null; desselecionar(); posJoy(); textoInfo();
 }
 $('mCasa').addEventListener('click', () => trocarModo('casa'));
@@ -391,16 +393,31 @@ function atualizarAndar(dt) {
 const itensG = new THREE.Group(); cena.add(itensG);
 let armado = null, sel = null, helper = null, arrasto = null, toque = null;
 function criarItem(d) {
-  const w = new THREE.Group(), m = Moveis.criar(d.tipo, d.v || 0); w.add(m); w.userData.d = d; posItem(w); itensG.add(w);
-  m.userData.pronto.then(() => m.traverse(o => { if (o.isMesh && !o.material.transparent) { o.castShadow = true; o.receiveShadow = true; } }));
+  const w = new THREE.Group(), m = Moveis.criar(d.tipo, d.v || 0), t = TIPOS[d.tipo]; w.add(m); w.userData.d = d; posItem(w); itensG.add(w);
+  if (d.w == null) { d.w = t.dim[0]; d.p = t.dim[2]; }
+  d.nome = t.nome; d.local = t.local; // a planta (Mapear) desenha o móvel com o nome
+  w.visible = !(modo === 'casa' && escondidoNaCasa(d));
+  m.userData.pronto.then(() => {
+    const cx = new THREE.Box3(); // tamanho real ocupado no chão (sem a sombra), usado para desenhar o móvel na planta
+    m.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(w.matrixWorld).invert();
+    m.traverse(o => {
+      if (!o.isMesh) return;
+      if (!o.material.transparent) { o.castShadow = true; o.receiveShadow = true; }
+      if (!o.userData.sombra) { o.geometry.computeBoundingBox(); cx.union(o.geometry.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld))); }
+    });
+    if (!cx.isEmpty()) { const s = cx.getSize(new THREE.Vector3()); if (Math.abs(s.x - d.w) > 0.02 || Math.abs(s.z - d.p) > 0.02) { d.w = +s.x.toFixed(2); d.p = +s.z.toFixed(2); salvarDepois(); } }
+  });
   return w;
 }
+// na vista "casa de bonecas" as paredes estão cortadas a 1,25 m: o que fica acima disso some (lustre, quadro alto, cortina)
+function escondidoNaCasa(d) { const t = TIPOS[d.tipo]; return t.local === 'teto' || d.tipo === 'cortina' || (t.local === 'parede' && (d.y || 0) - t.dim[1] / 2 > 1.2); }
+let tSalvar = 0; const salvarDepois = () => { clearTimeout(tSalvar); tSalvar = setTimeout(salvar, 400); };
 function posItem(w) { const d = w.userData.d; w.position.set(d.x, d.y || 0, d.z); w.rotation.y = d.rot || 0; }
 dados.itens.forEach(criarItem);
 const catalogo = Moveis.montarCatalogo($('catalogoVr'), id => {
   armado = armado === id ? null : id; catalogo.marcar(armado); desselecionar();
   if (armado && TIPOS[armado].gltf) Moveis.carregarGltf(TIPOS[armado].gltf);
-  $('dicaVr').innerHTML = armado ? `<b>${TIPOS[armado].nome}</b>: agora toque ${TIPOS[armado].local === 'parede' ? 'numa <b>parede</b>' : 'no <b>chão</b>'} onde quer colocar.` : 'Escolha um móvel e <b>toque no chão</b> (ou na parede, para quadros e relógio).';
+  $('dicaVr').innerHTML = armado ? `<b>${TIPOS[armado].nome}</b>: agora toque ${TIPOS[armado].local === 'parede' ? 'numa <b>parede</b>' : TIPOS[armado].local === 'teto' ? 'no <b>chão</b>, embaixo de onde ele vai ficar pendurado' : 'no <b>chão</b>'} onde quer colocar.` : 'Escolha um móvel e <b>toque no chão</b> (ou na parede, para quadros e relógio).';
 });
 
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -426,9 +443,10 @@ function colocarEm(tipo, e) {
   if (t.local === 'parede') {
     const h = acertoParede(); if (!h) return null;
     const PD = peDe(h.comodo);
-    return { tipo, v: 0, x: h.p.x + h.n.x * 0.004, y: Math.max(0.9, Math.min(PD - 0.35, h.p.y)), z: h.p.z + h.n.z * 0.004, rot: Math.atan2(h.n.x, h.n.z) };
+    return { tipo, v: 0, x: h.p.x + h.n.x * 0.004, y: t.alturaCentro ? Math.min(t.alturaCentro, PD - t.dim[1] / 2 - 0.02) : Math.max(0.9, Math.min(PD - 0.35, h.p.y)), z: h.p.z + h.n.z * 0.004, rot: Math.atan2(h.n.x, h.n.z) };
   }
   const h = acertoPiso(); if (!h) return null;
+  if (t.local === 'teto') return { tipo, v: 0, x: h.point.x, y: peDe(h.object.userData.comodo) - 0.01, z: h.point.z, rot: 0 };
   return { tipo, v: 0, x: h.point.x, y: 0, z: h.point.z, rot: Math.round(Math.atan2(cam.position.x - h.point.x, cam.position.z - h.point.z) / (Math.PI / 4)) * Math.PI / 4 };
 }
 function apertar(e) {
@@ -443,7 +461,7 @@ cv.addEventListener('pointermove', e => {
   if (!toque || toque.id !== e.pointerId) return;
   if (arrasto) { // arrasta o móvel pelo chão (ou pela parede)
     raio(e); const d = arrasto.userData.d;
-    if (TIPOS[d.tipo].local === 'parede') { const h = acertoParede(); if (h) { d.x = h.p.x + h.n.x * 0.004; d.z = h.p.z + h.n.z * 0.004; d.y = Math.max(0.9, Math.min(peDe(h.comodo) - 0.35, h.p.y)); d.rot = Math.atan2(h.n.x, h.n.z); } }
+    if (TIPOS[d.tipo].local === 'parede') { const h = acertoParede(); if (h) { d.x = h.p.x + h.n.x * 0.004; d.z = h.p.z + h.n.z * 0.004; if (!TIPOS[d.tipo].alturaCentro) d.y = Math.max(0.9, Math.min(peDe(h.comodo) - 0.35, h.p.y)); d.rot = Math.atan2(h.n.x, h.n.z); } }
     else { const h = acertoPiso(); if (h) { d.x = h.point.x; d.z = h.point.z; } }
     posItem(arrasto); return;
   }
@@ -477,7 +495,9 @@ function tocar(e) {
 function selecionar(w) {
   desselecionar(); sel = w;
   helper = new THREE.BoxHelper(w, '#facc15'); helper.material.depthTest = false; helper.renderOrder = 20; cena.add(helper);
-  $('selNome').textContent = TIPOS[w.userData.d.tipo].nome + (TIPOS[w.userData.d.tipo].local === 'parede' ? '' : ' · arraste para mover');
+  const t = TIPOS[w.userData.d.tipo], v = w.userData.d.v || 0;
+  $('selNome').innerHTML = `${t.nome}${t.nomesVar && t.nomesVar[v] ? ` <small>· ${t.nomesVar[v]}</small>` : ''}<br><small>${t.local === 'parede' ? 'arraste pela parede' : 'arraste para mover'}</small>`;
+  $('selVariar').hidden = t.variantes < 2;
   $('painelNormal').hidden = true; $('selecao').hidden = false; posJoy();
 }
 function desselecionar() {
@@ -488,9 +508,163 @@ const girarSel = a => { if (!sel) return; const d = sel.userData.d; if (TIPOS[d.
 $('selGirar').addEventListener('click', () => girarSel(-Math.PI / 4));
 $('selGirarE').addEventListener('click', () => girarSel(Math.PI / 4));
 $('selOk').addEventListener('click', desselecionar);
+function trocarItem(w, d) { const i = itensG.children.indexOf(w); itensG.remove(w); const n = criarItem(d); itensG.children.splice(itensG.children.indexOf(n), 1); itensG.children.splice(i, 0, n); return n; }
+$('selVariar').addEventListener('click', () => { // 🎨 próxima cor / estampa / obra
+  if (!sel) return; const d = sel.userData.d; d.v = ((d.v || 0) + 1) % TIPOS[d.tipo].variantes; salvar(); selecionar(trocarItem(sel, d));
+});
+$('selDuplicar').addEventListener('click', () => { // ⧉ mais um igual, ao lado
+  if (!sel) return; const d0 = sel.userData.d, t = TIPOS[d0.tipo], lado = { x: Math.cos(d0.rot || 0), z: -Math.sin(d0.rot || 0) };
+  const d = { ...d0, id: Math.random().toString(36).slice(2, 9), x: d0.x + lado.x * ((d0.w || t.dim[0]) + 0.1), z: d0.z + lado.z * ((d0.w || t.dim[0]) + 0.1) };
+  dados.itens.push(d); salvar(); selecionar(criarItem(d));
+});
 $('selApagar').addEventListener('click', () => {
   if (!sel) return; const d = sel.userData.d;
   dados.itens.splice(dados.itens.indexOf(d), 1); itensG.remove(sel); salvar(); desselecionar();
+});
+
+// ---------- ✨ MOBILIAR SOZINHO: um layout para cada tipo de cômodo ----------
+// Regras de arquiteto de interiores: móvel encostado em parede SEM porta, passagem livre na frente das
+// portas, sofá de frente para a TV, cama com criados-mudos dos dois lados, cortina em toda janela…
+function trechos(cm, alto) { // pedaços de parede livres (sem porta; se "alto", também sem janela)
+  const r = [];
+  for (let i = 0; i < cm.cantos.length; i++) {
+    const w = parede(cm, i), vaos = cm.aberturas.filter(a => a.parede === i && (alto || a.tipo !== 'janela'))
+      .map(a => [a.t * w.L - a.larg / 2 - (a.tipo === 'janela' ? 0.05 : 0.2), a.t * w.L + a.larg / 2 + (a.tipo === 'janela' ? 0.05 : 0.2)]).sort((a, b) => a[0] - b[0]);
+    let s = 0.03;
+    for (const [s0, s1] of vaos) { if (s0 - s > 0.3) r.push({ i, w, s0: s, s1: s0 }); s = Math.max(s, s1); }
+    if (w.L - 0.03 - s > 0.3) r.push({ i, w, s0: s, s1: w.L - 0.03 });
+  }
+  return r.map(t => ({ ...t, L: t.s1 - t.s0 })).sort((a, b) => b.L - a.L);
+}
+function retangulo(d) { // os 4 cantos do móvel no chão
+  const c = Math.cos(d.rot || 0), s = Math.sin(d.rot || 0), u = { x: c, z: -s }, f = { x: s, z: c }, a = (d.w || 0.5) / 2, b = (d.p || 0.5) / 2;
+  return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([i, j]) => ({ x: d.x + u.x * a * i + f.x * b * j, z: d.z + u.z * a * i + f.z * b * j }));
+}
+function sobrepoe(A, Bq) { // eixos separadores (dois retângulos girados)
+  for (const P of [A, Bq]) for (let i = 0; i < 4; i++) {
+    const e = sub(P[(i + 1) % 4], P[i]), n = { x: -e.z, z: e.x };
+    const pa = A.map(p => dot(p, n)), pb = Bq.map(p => dot(p, n));
+    if (Math.max(...pa) < Math.min(...pb) + 0.02 || Math.max(...pb) < Math.min(...pa) + 0.02) return false;
+  }
+  return true;
+}
+function planejar(cm) {
+  const novos = [], portas = cm.aberturas.filter(a => a.tipo !== 'janela'), nome = cm.nome.toLowerCase(), PD = peDe(cm);
+  const area = Math.abs(areaAss(cm.cantos)), cen = centro(cm.cantos), lista = () => dados.itens.concat(novos);
+  const tam = tipo => ({ w: TIPOS[tipo].dim[0], p: TIPOS[tipo].dim[2] });
+  const cabe = d => { // dentro do cômodo, longe da frente das portas e sem bater em outro móvel
+    const R = retangulo(d); if (TIPOS[d.tipo].local !== 'chao') return true;
+    if (!R.every(p => dentro(p, cm.cantos))) return false;
+    if (d.tipo !== 'tapete' && portas.some(a => R.some(p => dist(p, a.p) < a.larg / 2 + 0.55) || dist(d, a.p) < a.larg / 2 + 0.6)) return false;
+    const junto = (x, y) => /cadeira|banqueta/.test(x) && /mesa/.test(y);
+    return !lista().some(o => TIPOS[o.tipo] && TIPOS[o.tipo].local === 'chao' && o.tipo !== 'tapete' && d.tipo !== 'tapete' && !junto(d.tipo, o.tipo) && !junto(o.tipo, d.tipo) && sobrepoe(R, retangulo(o)));
+  };
+  const por = (tipo, x, z, rot, extra = {}) => { const d = { tipo, v: 0, x, y: 0, z, rot, ...tam(tipo), ...extra }; if (!cabe(d)) return null; novos.push(d); return d; };
+  const naParede = (tr, tipo, onde = 0.5, extra = {}) => { // encostado na parede, de frente para o cômodo
+    if (!tr) return null; const { w, p } = tam(tipo); if (tr.L < w + 0.02) return null;
+    const ideal = typeof onde === 'object' ? Math.max(tr.s0 + w / 2, Math.min(tr.s1 - w / 2, dot(sub(onde, tr.w.a), tr.w.u))) : tr.s0 + w / 2 + (tr.L - w) * onde;
+    const opcoes = [ideal]; for (let k = 0.1; k < tr.L; k += 0.1) opcoes.push(ideal - k, ideal + k); // não coube? desliza pela parede
+    for (const s of opcoes) {
+      if (s < tr.s0 + w / 2 - 1e-6 || s > tr.s1 - w / 2 + 1e-6) continue;
+      const q = add(add(tr.w.a, mul(tr.w.u, s)), mul(tr.w.n, p / 2 + 0.03)), d = por(tipo, q.x, q.z, Math.atan2(tr.w.n.x, tr.w.n.z), extra);
+      if (d) return d;
+    }
+    return null;
+  };
+  const noMeio = (tipo, rot) => { // perto do centro, procurando em espiral um lugar livre
+    for (let r = 0; r <= 1.2; r += 0.15) for (let a = 0; a < (r ? 12 : 1); a++) { const d = por(tipo, cen.x + r * Math.cos(a / 12 * 2 * Math.PI), cen.z + r * Math.sin(a / 12 * 2 * Math.PI), rot); if (d) return d; }
+    return null;
+  };
+  const naFrente = (d, tipo, afasta, giro = 0, lado = 0, extra = {}) => { // em frente / ao lado de outro móvel
+    if (!d) return null; const f = { x: Math.sin(d.rot), z: Math.cos(d.rot) }, u = { x: Math.cos(d.rot), z: -Math.sin(d.rot) };
+    const q = add(add(d, mul(f, afasta)), mul(u, lado)); return por(tipo, q.x, q.z, d.rot + giro, extra);
+  };
+  const quadroAcima = (d, tipo = 'quadro', y = 1.55, v = 0) => { // na parede, centralizado acima do móvel
+    if (!d) return; const f = { x: Math.sin(d.rot), z: Math.cos(d.rot) }, q = add(d, mul(f, -(d.p / 2 + 0.03 - 0.006)));
+    const largQ = TIPOS[tipo].dim[0] / 2 + 0.1; // não pendura em cima de janela
+    if (cm.aberturas.some(a => a.tipo === 'janela' && Math.abs(dot(sub(a.p, q), f)) < 0.15 && Math.abs(dot(sub(a.p, q), { x: f.z, z: -f.x })) < a.larg / 2 + largQ)) return;
+    novos.push({ tipo, v, x: q.x, y: Math.min(y, PD - 0.4), z: q.z, rot: d.rot, ...tam(tipo) });
+  };
+  const oposto = (tr, lista2) => lista2.filter(t => t !== tr && dot(t.w.n, tr.w.n) < -0.9).sort((a, b) => b.L - a.L)[0];
+  const outro = (lista2, ...nao) => lista2.find(t => !nao.some(x => x && x.i === t.i));
+  const baixos = trechos(cm, false), altos = trechos(cm, true);
+  // tenta primeiro paredes inteiras (sem janela) e depois as outras, até o móvel caber
+  const primeiro = (min, f) => { for (const t of [...altos.filter(t => t.L >= min), ...baixos]) { const d = f(t); if (d) return [d, t]; } return [null, baixos[0]]; };
+  if (/sala|estar|living/.test(nome)) {
+    const [sofa, tr] = primeiro(2.3, t => naParede(t, t.L >= 2.2 ? 'sofa_moderno' : 'sofa_classico', 0.5));
+    const tv = sofa && naParede(oposto(tr, altos) || oposto(tr, baixos), 'rack_tv', sofa);
+    if (sofa) {
+      const dist2 = tv ? Math.hypot(tv.x - sofa.x, tv.z - sofa.z) : 2.6;
+      naFrente(sofa, 'tapete', Math.min(1.3, dist2 / 2), 0, 0, { v: 1 });
+      naFrente(sofa, 'mesa_centro_moderna', Math.min(sofa.p / 2 + 0.75, dist2 / 2));
+      naFrente(sofa, 'poltrona_moderna', sofa.p / 2 + 0.85, Math.PI / 2 + 0.35, sofa.w / 2 + 0.55) || naFrente(sofa, 'poltrona_moderna', sofa.p / 2 + 0.85, -Math.PI / 2 - 0.35, -sofa.w / 2 - 0.55);
+      naFrente(sofa, 'luminaria_piso', 0, 0, -(sofa.w / 2 + 0.35)) || naFrente(sofa, 'mesa_lateral', 0, 0, -(sofa.w / 2 + 0.35));
+      quadroAcima(sofa, 'quadro', 1.6, 2);
+    }
+    naParede(outro(baixos, tr, tv && altos.find(t => dot(t.w.n, tr.w.n) < -0.9)), 'planta', 1) || naParede(tr, 'planta', 1);
+    naParede(outro(altos, tr), 'estante', 0.5);
+  } else if (/quarto|suíte|suite|dormit/.test(nome)) {
+    const [cama, tr] = primeiro(2.5, t => naParede(t, t.L >= 2.4 && area >= 7 ? 'cama_casal' : 'cama_solteiro', 0.5));
+    if (cama) {
+      for (const s of [-1, 1]) naFrente(cama, 'criado_mudo', -(cama.p / 2) + 0.24, 0, s * (cama.w / 2 + 0.33));
+      naFrente(cama, 'tapete', 0.35, 0, 0, { v: 3 });
+      quadroAcima(cama, 'quadro', 1.55, 4);
+    }
+    naParede(outro(altos, tr), 'guarda_roupa', 0.5) || naParede(altos.find(t => t.i !== (tr && tr.i) && t.L >= 1.2), 'comoda_classica', 0.5);
+    naParede(outro(baixos, tr), 'planta', 1);
+  } else if (/cozinha|copa/.test(nome)) {
+    const tr = altos[0], bal = naParede(tr, 'balcao_cozinha', 0.15);
+    if (bal) { quadroAcima(bal, 'armario_aereo', 1.85); novos[novos.length - 1].p = 0.35; }
+    naParede(tr, 'geladeira', 1) || naParede(outro(altos, tr), 'geladeira', 0);
+    if (area >= 8.5) {
+      const m = noMeio('mesa_jantar', tr ? Math.atan2(tr.w.n.x, tr.w.n.z) + Math.PI / 2 : 0);
+      if (m) for (const s of [-1, 1]) for (const l of [-0.42, 0.42]) naFrente(m, 'cadeira_jantar', s * (m.p / 2 + 0.22), s > 0 ? Math.PI : 0, l);
+      if (m) novos.push({ tipo: 'pendente', v: 0, x: m.x, y: PD - 0.01, z: m.z, rot: 0, ...tam('pendente') });
+    } else {
+      const m = noMeio('mesa_bistro', 0); if (m) { naFrente(m, 'banqueta', 0.62); naFrente(m, 'banqueta', -0.62, Math.PI); }
+    }
+  } else if (/banheiro|lavabo|wc/.test(nome)) {
+    const tr = altos[0];
+    naParede(tr, area >= 5.5 && tr && tr.L >= 2.6 ? 'banheira' : 'box_chuveiro', 1);
+    naParede(tr, 'vaso_sanitario', 0.2) || naParede(outro(altos, tr), 'vaso_sanitario', 0.5);
+    const p = naParede(outro(altos, tr), 'pia_banheiro', 0.5) || naParede(tr, 'pia_banheiro', 0);
+    if (p) quadroAcima(p, 'espelho_banheiro', 1.55);
+  } else if (/escrit|home|estudo/.test(nome)) {
+    const tr = baixos[0], mesa = naParede(tr, 'escrivaninha', 0.5);
+    if (mesa) naFrente(mesa, 'cadeira_escritorio', mesa.p / 2 + 0.3, Math.PI);
+    naParede(outro(altos, tr), 'estante_livros', 0.5); naParede(outro(baixos, tr), 'planta', 1);
+    if (mesa) quadroAcima(mesa, 'quadro', 1.5, 6);
+  } else if (/varanda|sacada|quintal/.test(nome)) {
+    const tr = baixos[0]; naParede(tr, 'cadeira_balanco', 0.3); naParede(tr, 'floreira', 0.85); naParede(outro(baixos, tr), 'planta', 0.5);
+  } else {
+    naParede(baixos[0], 'aparador', 0.5) || naParede(baixos[0], 'planta', 0.5); naParede(outro(baixos, baixos[0]), 'planta', 1);
+    if (baixos[0]) { const q = baixos[0], s = (q.s0 + q.s1) / 2, p = add(add(q.w.a, mul(q.w.u, s)), mul(q.w.n, 0.006)); novos.push({ tipo: 'quadro', v: 3, x: p.x, y: 1.6, z: p.z, rot: Math.atan2(q.w.n.x, q.w.n.z), ...tam('quadro') }); }
+  }
+  // cortina em toda janela e luz no teto
+  for (const a of cm.aberturas.filter(b => b.tipo === 'janela' && !b.sugerida)) {
+    const w = parede(cm, a.parede), q = add(a.p, mul(w.n, 0.004));
+    novos.push({ tipo: 'cortina', v: 0, x: q.x, y: Math.min(1.3, PD - 1.22), z: q.z, rot: Math.atan2(w.n.x, w.n.z), w: Math.min(a.larg + 0.6, 2.2), p: 0.12 });
+  }
+  if (!novos.some(d => TIPOS[d.tipo].local === 'teto') && !/banheiro|lavabo/.test(nome)) novos.push({ tipo: /sala/.test(nome) ? 'lustre' : 'pendente', v: 0, x: cen.x, y: PD - 0.01, z: cen.z, rot: 0, ...tam('pendente') });
+  return novos;
+}
+function noComodo(d) { return comodos.find(c => dentro(d, c.cantos)); }
+function mobiliarSozinho(lista) {
+  let n = 0;
+  for (const cm of lista) {
+    dados.itens.filter(d => noComodo(d) === cm).forEach(d => { dados.itens.splice(dados.itens.indexOf(d), 1); });
+    for (const d of planejar(cm)) { d.id = Math.random().toString(36).slice(2, 9); dados.itens.push(d); n++; }
+  }
+  itensG.clear(); dados.itens.forEach(criarItem); desselecionar(); salvar();
+  aviso(`✨ ${n} móveis colocados ${lista.length > 1 ? 'na casa toda' : 'no(a) ' + lista[0].nome}`);
+  return n;
+}
+const alvoAuto = () => (modo === 'casa' ? comodos : [comodos.find(c => dentro(eu, c.cantos)) || comodos[0]]);
+$('btnAuto').addEventListener('click', () => mobiliarSozinho(alvoAuto()));
+$('btnLimpar').addEventListener('click', () => {
+  const l = alvoAuto(); if (!confirm(`Tirar todos os móveis ${l.length > 1 ? 'da casa' : 'do(a) ' + l[0].nome}?`)) return;
+  dados.itens = dados.itens.filter(d => !l.includes(noComodo(d))); todos[CASA_ID].itens = dados.itens;
+  itensG.clear(); dados.itens.forEach(criarItem); desselecionar(); salvar();
 });
 
 // ---------- pintar: cor da parede e piso de cada cômodo ----------
@@ -545,6 +719,7 @@ function ajustar() {
 addEventListener('resize', ajustar);
 if (new URLSearchParams(location.search).has('sim')) document.body.classList.add('sim'); // simulador: sem botões
 ajustar(); trocarModo(new URLSearchParams(location.search).get('modo') || 'casa');
+if (!dados.itens.length && !dados.autoFeito && !new URLSearchParams(location.search).has('vazia')) { dados.autoFeito = true; mobiliarSozinho(comodos); } // 1ª vez: já mobiliada
 $('carregandoVr').hidden = true;
 
 let tAnt = performance.now(), comodoAntes = null;
@@ -567,7 +742,7 @@ requestAnimationFrame(quadro);
 window.VR = {
   dados, eu, comodos, trocarModo, pintar, trocarPiso, abaPainel, aplicarLuz: n => { noite = n; aplicarLuz(); },
   colocar(tipo, x, z, rot = 0) { const d = { id: 't' + dados.itens.length, tipo, v: 0, x, y: 0, z, rot }; dados.itens.push(d); salvar(); return criarItem(d).userData.d; },
-  olhar(yaw, pitch) { eu.yaw = yaw; eu.pitch = pitch; },
+  olhar(yaw, pitch) { eu.yaw = yaw; eu.pitch = pitch; }, mobiliarSozinho, planejar,
   pose(x, y, z, q, fov, agora) {
     externo = { x, y, z, q }; if (fov && Math.abs(camAndar.fov - fov) > 0.01) { camAndar.fov = fov; camAndar.updateProjectionMatrix(); }
     if (agora) { camAndar.position.set(x, y, z); camAndar.quaternion.set(...q); renderer.render(cena, camAndar); return cv; } // quadro exato desta pose

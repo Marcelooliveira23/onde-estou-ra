@@ -256,6 +256,7 @@ function ajustarTela() {
   const f = (Math.min(vw, vh) * s / 2) / Math.tan(FOV_LADO_CURTO * d2r / 2); // distância focal em px da tela
   camera.fov = 2 * Math.atan((H / 2) / f) * r2d; camera.aspect = W / H; camera.updateProjectionMatrix();
   const mini = $('mini'); mini.width = mini.clientWidth * dpr; mini.height = mini.clientHeight * dpr;
+  lupa.width = lupa.height = Math.round(lupa.clientWidth * dpr);
 }
 addEventListener('resize', () => { if (estado.etapa !== 'capa') ajustarTela(); });
 
@@ -291,6 +292,19 @@ function quadro(t) {
   atualizarRetic();
   renderer.render(cena, camera);
   if (t - tMini > 70) { tMini = t; desenharMini(); textoMira(); }
+  desenharLupa();
+}
+// 🔍 lupa: o centro da imagem ampliado 3x, ao lado da mira (para acertar o canto exato)
+const lupa = $('lupa'), lupaG = lupa.getContext('2d');
+function desenharLupa() {
+  const mostrar = ['cantos', 'entrada', 'porta'].includes(estado.etapa) && !!estado.mira && video.readyState >= 2 && !simVR;
+  lupa.hidden = !mostrar; if (!mostrar) return;
+  const W = innerWidth, H = innerHeight, vw = video.videoWidth, vh = video.videoHeight, s = Math.max(W / vw, H / vh), N = lupa.width;
+  const lado = N / dpr / 3 / s; // pedaço do vídeo que cabe na lupa com zoom 3x
+  lupaG.save(); lupaG.beginPath(); lupaG.arc(N / 2, N / 2, N / 2, 0, 7); lupaG.clip();
+  lupaG.drawImage(video, vw / 2 - lado / 2, vh / 2 - lado / 2, lado, lado, 0, 0, N, N);
+  lupaG.strokeStyle = '#4ade80'; lupaG.lineWidth = 2 * dpr; lupaG.beginPath(); lupaG.moveTo(N / 2, 0); lupaG.lineTo(N / 2, N); lupaG.moveTo(0, N / 2); lupaG.lineTo(N, N / 2); lupaG.stroke();
+  lupaG.restore();
 }
 function binDe(d) { const yaw = Math.atan2(-d.x, -d.z); return Math.floor(((yaw % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) / (2 * Math.PI) * 36) % 36; }
 const luzCv = document.createElement('canvas'); luzCv.width = 16; luzCv.height = 28;
@@ -400,7 +414,7 @@ async function ligarIA() {
 const qAntes = []; // orientações recentes: girando rápido, a imagem chega "atrasada" e a medida sai torta
 async function cicloIA(t) {
   qAntes.push({ q: camera.quaternion.clone(), t }); while (qAntes.length > 2 && t - qAntes[1].t > 160) qAntes.shift();
-  if (!IA.pronto() || iaOcupada || t - tIA < 300 || video.readyState < 2 || estado.dir.y > -0.08) return;
+  if (!IA.pronto() || iaOcupada || t - tIA < 300 || video.readyState < 2 || estado.dir.y > -0.08 || estado.dir.y < -0.88) return;
   if (!simVR && qAntes.length > 1 && qAntes[0].q.angleTo(camera.quaternion) > 5 * d2r) return; // > ~30°/s: espera ficar mais parado
   iaOcupada = true; tIA = t;
   camFoto.copy(camera); camFoto.updateMatrixWorld();
@@ -412,13 +426,14 @@ async function cicloIA(t) {
     const r = await IA.segmentar(fonte, (vw - sw) / 2, (vh - sh) / 2, sw, sh);
     if (estado.etapa !== 'cantos' || estado.atual !== cm) return;
     ia.ms = r.ms;
-    for (const p of IA.rodapes(r)) {
+    for (const p of IA.rodapes(r, 64)) {
+      if (Math.abs(p.u - 0.5) > 0.44) continue; // bordas da imagem: a lente distorce mais
       v3.set(p.u * 2 - 1, 1 - p.v * 2, 0.5).unproject(camFoto).sub(camFoto.position).normalize();
-      if (v3.y > -0.05) continue;
+      if (v3.y > -0.16) continue; // raio quase na horizontal (< 9°): um errinho de ângulo vira muitos centímetros
       const k = casa.h / -v3.y, x = v3.x * k, z = v3.z * k, d = Math.hypot(x, z);
-      if (d < 0.4 || d > 7) continue;
+      if (d < 0.4 || d > 6.5) continue;
       const bin = ia.bins[Math.floor(((Math.atan2(z, x) + 2 * Math.PI) % (2 * Math.PI)) / (2 * Math.PI) * 180) % 180];
-      bin.push({ x: o.x + x, z: o.z + z, d, tipo: p.tipo }); if (bin.length > 9) bin.shift();
+      bin.push({ x: o.x + x, z: o.z + z, d, tipo: p.tipo }); if (bin.length > 15) bin.shift();
       ia.n++;
     }
     const antes = ia.poli && ia.poli.cantos.length;
@@ -426,7 +441,7 @@ async function cicloIA(t) {
     if (verIA) { iaCv.width = 96; iaCv.height = Math.round(96 * H / W); IA.pintarMapa(r, iaCtx, iaCv.width, iaCv.height); }
     $('iaChip').textContent = `🤖 ${ia.n} pontos${ia.poli ? ` · ${ia.poli.cantos.length} paredes` : ''} · ${Math.round(r.ms)} ms`;
     if ((ia.poli && ia.poli.cantos.length) !== antes) ui();
-    if (!iaAuto && cm.cantos.length === 0 && volta() >= 0.95 && ia.poli && ia.poli.cantos.length >= 4 && ia.poli.cheios >= 80) {
+    if (!iaAuto && cm.cantos.length === 0 && volta() >= 0.95 && ia.poli && ia.poli.cantos.length >= 4 && ia.poli.cheios >= 60) {
       iaAuto = true; aviso('🤖 Volta completa: <b>a IA fechou a planta</b>', '#7c3aed'); setTimeout(() => { if (estado.etapa === 'cantos' && estado.atual === cm) concluir(); }, 700);
     }
   } catch (e) { console.warn(e); } finally { iaOcupada = false; }
@@ -445,6 +460,10 @@ function poligonoIA(cm) {
     rep.push({ x: m.x, z: m.z, d: m.d, b, tipo: Object.entries(cont).sort((a, c) => c[1] - a[1])[0][0] });
   }
   const cheios = rep.filter(Boolean).length; if (cheios < 30) return null;
+  for (const r of rep) if (r) { // muito mais longe que os vizinhos = olhando por uma porta/passagem (o cômodo do lado)
+    const viz = []; for (let k = -5; k <= 5; k++) { const q = k && rep[(r.b + k + 180) % 180]; if (q) viz.push(q.d); }
+    viz.sort((a, c) => a - c); r.vao = viz.length >= 3 && r.d > viz[viz.length >> 1] + 0.75; // atrás de móvel a parede fica uns 30-60 cm além; por uma porta, bem mais
+  }
   const seq = rep.filter(Boolean); let sx = 0, sy = 0; // direção principal das paredes (módulo 90°)
   for (let i = 0; i < seq.length; i++) {
     const u = sub(seq[(i + 1) % seq.length], seq[i]), L = Math.hypot(u.x, u.z); if (L < 0.03 || L > 0.5) continue;
@@ -466,7 +485,10 @@ function poligonoIA(cm) {
       const bs = new Set(); for (const v of vals) if (Math.abs(v.c - k * 0.05) < 0.1) bs.add(v.b);
       cand.push({ k, n: bs.size }); max = Math.max(max, bs.size);
     }
-    const ok = cand.filter(c => c.n >= Math.max(4, max * 0.35)).sort((a, b) => b.k - a.k)[0];
+    // a parede é a reta MAIS LONGE com apoio; atrás de um móvel ela aparece pouco (até ~60 cm além da frente do
+    // móvel), por uma porta aparece o outro cômodo, bem mais longe: esse não conta
+    const forte = cand.filter(c => c.n >= Math.max(4, max * 0.35)).sort((a, b) => b.k - a.k)[0];
+    const ok = cand.filter(c => c.n >= 3 && (!forte || c.k * 0.05 <= forte.k * 0.05 + 0.6)).sort((a, b) => b.k - a.k)[0];
     if (!ok) { const cs = vals.map(v => v.c).sort((a, b) => a - b); dist4.push(cs[Math.floor(cs.length * 0.8)]); continue; } // parede quase toda escondida: estimativa
     const perto = vals.filter(v => Math.abs(v.c - ok.k * 0.05) < 0.12);
     dist4.push(perto.reduce((s2, v) => s2 + v.c, 0) / perto.length);
@@ -727,7 +749,7 @@ function enquadrar(W, H, vivo, pad) {
 function desenharPlanta(g, W, H, v, op = {}) {
   const k = op.k || 1, X = p => (p.x - v.cx) * v.esc + W / 2, Y = p => (p.z - v.cz) * v.esc + H / 2;
   g.save(); g.beginPath(); g.rect(0, 0, W, H); g.clip(); g.fillStyle = op.fundo || '#f8fafc'; g.fillRect(0, 0, W, H);
-  if (v.esc > 12 * k) { // grade de 1 m
+  if (v.esc > 12 * k && !op.semGrade) { // grade de 1 m
     g.strokeStyle = '#e2e8f0'; g.lineWidth = k;
     const mx = W / 2 / v.esc, mz = H / 2 / v.esc;
     for (let x = Math.floor(v.cx - mx); x <= v.cx + mx; x++) { g.beginPath(); g.moveTo(X({ x, z: 0 }), 0); g.lineTo(X({ x, z: 0 }), H); g.stroke(); }
@@ -736,6 +758,7 @@ function desenharPlanta(g, W, H, v, op = {}) {
   const caminho = c => { g.beginPath(); c.forEach((p, i) => (i ? g.lineTo(X(p), Y(p)) : g.moveTo(X(p), Y(p)))); };
   const fechados = casa.comodos.filter(c => c.fechado && c.cantos.length >= 3);
   for (const cm of fechados) { caminho(cm.cantos); g.closePath(); g.fillStyle = cm.cor; g.fill(); }
+  if (op.moveis) desenharMoveis(g, X, Y, v.esc, k);
   for (const cm of fechados) desenharParedes(g, cm, X, Y, v.esc, k);
   const at = estado.atual;
   if (op.vivo && at && !at.fechado && estado.etapa === 'cantos' && ia.n) { // o que a IA achou: pontos e paredes
@@ -761,22 +784,80 @@ function desenharPlanta(g, W, H, v, op = {}) {
       g.beginPath(); g.moveTo(mx - 5 * k, my); g.lineTo(mx + 5 * k, my); g.moveTo(mx, my - 5 * k); g.lineTo(mx, my + 5 * k); g.stroke();
     }
   }
-  for (const cm of fechados) { // nome e área
-    const c = centro(cm.cantos), fs = Math.max(9 * k, Math.min(16 * k, v.esc * 0.3));
-    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#0f172a';
-    g.font = `800 ${fs}px -apple-system, Segoe UI, Arial`; g.fillText(cm.nome, X(c), Y(c) - fs * 0.55);
-    g.font = `600 ${fs * 0.85}px -apple-system, Segoe UI, Arial`; g.fillStyle = '#475569'; g.fillText(`${fmt(area(cm.cantos), 1)} m²`, X(c), Y(c) + fs * 0.6);
+  for (const cm of fechados) { // nome, área e pé-direito
+    const c = centro(cm.cantos), fs = Math.max(9 * k, Math.min(16 * k, v.esc * 0.3)), op2 = op.moveis && moveisSalvos().length;
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    const linhas = [[`800 ${fs}px`, '#0f172a', cm.nome], [`600 ${fs * 0.85}px`, '#475569', `${fmt(area(cm.cantos), 1)} m²`]];
+    if (op.cotas) linhas.push([`600 ${fs * 0.7}px`, '#64748b', `PD ${fmt(peDe(cm))} m`]);
+    const alt = linhas.length * fs * 1.1;
+    if (op2) { g.font = linhas[0][0] + ' -apple-system, Segoe UI, Arial'; const lw = Math.max(...linhas.map(l => (g.font = l[0] + ' -apple-system, Segoe UI, Arial', g.measureText(l[2]).width))); g.fillStyle = 'rgba(255,255,255,.82)'; g.beginPath(); g.roundRect(X(c) - lw / 2 - 6 * k, Y(c) - alt / 2 - 3 * k, lw + 12 * k, alt + 6 * k, 6 * k); g.fill(); }
+    linhas.forEach(([f, cor, t], i) => { g.font = `${f} -apple-system, Segoe UI, Arial`; g.fillStyle = cor; g.fillText(t, X(c), Y(c) - alt / 2 + fs * 1.1 * (i + 0.5)); });
   }
-  if (op.cotas) for (const cm of fechados) for (let i = 0; i < cm.cantos.length; i++) { // medidas das paredes
-    const w = parede(cm, i), m = mul(add(w.a, w.b), 0.5), fs = 11 * k;
+  if (op.cotas) for (const cm of fechados) for (let i = 0; i < cm.cantos.length; i++) { // cota de cada parede: linha com tracinhos, por dentro do cômodo
+    const w = parede(cm, i), fs = 10.5 * k, off = 15 * k, ox = w.n.x * off, oy = w.n.z * off;
+    const ux = w.u.x * off, uy = w.u.z * off; // encurta nas pontas: as cotas não se cruzam nos cantos
+    const a = { x: X(w.a) + ox + ux, y: Y(w.a) + oy + uy }, b = { x: X(w.b) + ox - ux, y: Y(w.b) + oy - uy }, trava = cm.travas && cm.travas[i] != null;
+    if (Math.hypot(b.x - a.x, b.y - a.y) < 34 * k) continue;
+    const ang0 = Math.atan2(b.y - a.y, b.x - a.x), cor = trava ? '#7c3aed' : '#b91c1c';
+    g.strokeStyle = cor; g.lineWidth = 0.9 * k; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
+    for (const p of [a, b]) { g.beginPath(); g.moveTo(p.x - 4 * k * Math.cos(ang0 - 0.8), p.y - 4 * k * Math.sin(ang0 - 0.8)); g.lineTo(p.x + 4 * k * Math.cos(ang0 - 0.8), p.y + 4 * k * Math.sin(ang0 - 0.8)); g.lineWidth = 1.4 * k; g.stroke(); }
+    let ang = ang0; if (ang > Math.PI / 2 + 0.01) ang -= Math.PI; else if (ang < -Math.PI / 2 + 0.01) ang += Math.PI; // texto sempre de pé
+    const txt = `${fmt(w.L)}${trava ? ' 🔒' : ''}`;
+    g.save(); g.translate((a.x + b.x) / 2, (a.y + b.y) / 2); g.rotate(ang);
     g.font = `700 ${fs}px -apple-system, Segoe UI, Arial`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    const off = 9 * k + fs * 0.6, px = X(m) + w.n.x * off, py = Y(m) + w.n.z * off; // por dentro do cômodo, ao longo da parede
-    let ang = Math.atan2(w.u.z, w.u.x); if (ang > Math.PI / 2 + 0.01) ang -= Math.PI; else if (ang < -Math.PI / 2 + 0.01) ang += Math.PI; // texto sempre de pé
-    g.save(); g.translate(px, py); g.rotate(ang);
-    g.lineWidth = 3 * k; g.strokeStyle = '#fff'; g.strokeText(`${fmt(w.L)} m`, 0, 0); g.fillStyle = '#b91c1c'; g.fillText(`${fmt(w.L)} m`, 0, 0);
-    g.restore();
+    const tw = g.measureText(txt).width; g.fillStyle = '#ffffff'; g.fillRect(-tw / 2 - 3 * k, -fs * 0.62, tw + 6 * k, fs * 1.24);
+    g.fillStyle = cor; g.fillText(txt, 0, 0); g.restore();
+  }
+  if (op.geral && fechados.length) { // cota geral da casa (por fora): largura e profundidade totais
+    const B = limites(fechados.flatMap(c => c.cantos)), off = 22 * k, fs = 11.5 * k;
+    g.strokeStyle = '#334155'; g.fillStyle = '#334155'; g.lineWidth = 1 * k; g.font = `800 ${fs}px -apple-system, Segoe UI, Arial`; g.textAlign = 'center'; g.textBaseline = 'bottom';
+    const yT = Y({ x: 0, z: B.z0 }) - off, xL = X({ x: B.x0, z: 0 }) - off;
+    const linhaCota = (x0, y0, x1, y1) => { g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); for (const [x, y] of [[x0, y0], [x1, y1]]) { g.beginPath(); g.moveTo(x - 4 * k, y + 4 * k); g.lineTo(x + 4 * k, y - 4 * k); g.stroke(); } };
+    linhaCota(X({ x: B.x0, z: 0 }), yT, X({ x: B.x1, z: 0 }), yT);
+    for (const x of [B.x0, B.x1]) { g.setLineDash([2 * k, 2 * k]); g.beginPath(); g.moveTo(X({ x, z: 0 }), yT - 3 * k); g.lineTo(X({ x, z: 0 }), Y({ x: 0, z: B.z0 }) - 3 * k); g.stroke(); g.setLineDash([]); }
+    g.fillText(`${fmt(B.x1 - B.x0)} m`, (X({ x: B.x0, z: 0 }) + X({ x: B.x1, z: 0 })) / 2, yT - 3 * k);
+    linhaCota(xL, Y({ x: 0, z: B.z0 }), xL, Y({ x: 0, z: B.z1 }));
+    for (const z of [B.z0, B.z1]) { g.setLineDash([2 * k, 2 * k]); g.beginPath(); g.moveTo(xL + 3 * k, Y({ x: 0, z })); g.lineTo(X({ x: B.x0, z: 0 }) - 3 * k, Y({ x: 0, z })); g.stroke(); g.setLineDash([]); }
+    g.save(); g.translate(xL - 3 * k, (Y({ x: 0, z: B.z0 }) + Y({ x: 0, z: B.z1 })) / 2); g.rotate(-Math.PI / 2); g.fillText(`${fmt(B.z1 - B.z0)} m`, 0, 0); g.restore();
+  }
+  if (op.editar) { // alças do editor
+    const sel = op.editar.sel;
+    if (sel && sel.tipo === 'parede') { const w = parede(sel.cm, sel.i); g.strokeStyle = 'rgba(249,115,22,.75)'; g.lineWidth = 9 * k; g.lineCap = 'round'; g.beginPath(); g.moveTo(X(w.a), Y(w.a)); g.lineTo(X(w.b), Y(w.b)); g.stroke(); }
+    if (sel && sel.tipo === 'comodo') { caminho(sel.cm.cantos); g.closePath(); g.strokeStyle = '#2563eb'; g.lineWidth = 3 * k; g.setLineDash([6 * k, 4 * k]); g.stroke(); g.setLineDash([]); }
+    for (const cm of fechados) {
+      for (let i = 0; i < cm.cantos.length; i++) { const p = cm.cantos[i], s = sel && sel.tipo === 'canto' && sel.cm === cm && sel.i === i; g.beginPath(); g.arc(X(p), Y(p), (s ? 9 : 7) * k, 0, 7); g.fillStyle = s ? '#2563eb' : '#fff'; g.fill(); g.strokeStyle = '#2563eb'; g.lineWidth = 2.5 * k; g.stroke(); }
+      for (const a of cm.aberturas) { const s = sel && sel.a === a; g.beginPath(); g.arc(X(a.p), Y(a.p), (s ? 8 : 6) * k, 0, 7); g.fillStyle = COR_AB[a.tipo]; g.fill(); g.strokeStyle = s ? '#0f172a' : '#fff'; g.lineWidth = 2 * k; g.stroke(); }
+    }
   }
   g.restore();
+}
+// móveis colocados no modo 🥽 VR aparecem na planta (vista de cima, em escala)
+function moveisSalvos() {
+  const f = casa.comodos.filter(c => c.fechado && c.cantos.length >= 3); if (!f.length) return [];
+  try { const d = JSON.parse(localStorage.getItem('decora-vr-v1') || '{}')[f[0].id]; return d && Array.isArray(d.itens) ? d.itens : []; } catch (e) { return []; }
+}
+function desenharMoveis(g, X, Y, esc, k) {
+  for (const d of moveisSalvos()) {
+    if (d.local === 'teto' || d.local === 'parede' || d.w == null) continue;
+    const c = Math.cos(d.rot || 0), s = Math.sin(d.rot || 0), u = { x: c, z: -s }, f = { x: s, z: c }, a = d.w / 2, b = d.p / 2;
+    const P = (i, j) => ({ x: d.x + u.x * a * i + f.x * b * j, z: d.z + u.z * a * i + f.z * b * j });
+    const R = [P(-1, -1), P(1, -1), P(1, 1), P(-1, 1)];
+    g.beginPath(); R.forEach((p, i) => (i ? g.lineTo(X(p), Y(p)) : g.moveTo(X(p), Y(p)))); g.closePath();
+    const tapete = /tapete/.test(d.tipo);
+    g.fillStyle = tapete ? 'rgba(148,163,184,.12)' : 'rgba(255,255,255,.88)'; g.fill();
+    g.setLineDash(tapete ? [4 * k, 3 * k] : []); g.strokeStyle = '#64748b'; g.lineWidth = 1.2 * k; g.stroke(); g.setLineDash([]);
+    const linha = (i0, j0, i1, j1) => { g.beginPath(); g.moveTo(X(P(i0, j0)), Y(P(i0, j0))); g.lineTo(X(P(i1, j1)), Y(P(i1, j1))); g.stroke(); };
+    g.lineWidth = 0.9 * k;
+    if (/cama/.test(d.tipo)) { linha(-1, -0.62, 1, -0.62); linha(-0.05, -1, -0.05, -0.62); linha(-1, -0.2, 1, -0.2); } // travesseiros e edredom
+    else if (/sofa/.test(d.tipo)) { linha(-1, -0.45, 1, -0.45); linha(-0.8, -0.45, -0.8, 1); linha(0.8, -0.45, 0.8, 1); }
+    else if (/balcao/.test(d.tipo)) { g.strokeRect(X(P(-0.75, -0.6)), Y(P(-0.75, -0.6)), (X(P(-0.2, 0.4)) - X(P(-0.75, -0.6))), (Y(P(-0.2, 0.4)) - Y(P(-0.75, -0.6)))); }
+    else if (/vaso_sanit|pia_ban/.test(d.tipo)) { g.beginPath(); const q = P(0, 0.2); g.ellipse(X(q), Y(q), a * esc * 0.6, b * esc * 0.45, 0, 0, 7); g.stroke(); }
+    else if (/mesa/.test(d.tipo)) { linha(-0.85, -0.85, 0.85, -0.85); }
+    if (d.nome && d.w * esc > 46 * k && !tapete) {
+      g.save(); const cc = P(0, 0.05); g.translate(X(cc), Y(cc)); let ang = Math.atan2(u.z, u.x); if (ang > Math.PI / 2) ang -= Math.PI; else if (ang < -Math.PI / 2) ang += Math.PI; g.rotate(ang);
+      g.font = `600 ${8.5 * k}px -apple-system, Segoe UI, Arial`; g.fillStyle = '#475569'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(d.nome, 0, 0); g.restore();
+    }
+  }
 }
 function desenharParedes(g, cm, X, Y, esc, k) {
   const lw = Math.max(2.5 * k, ESP * esc * 1.3);
@@ -818,8 +899,8 @@ function desenharMini() {
 
 // ---------- planta completa: 2D com medidas e maquete 3D ----------
 let aba = '2d', notaPlanta = '';
-function abrirPlanta() {
-  $('planta').hidden = false; trocarAba(aba);
+function abrirPlanta() { $('planta').hidden = false; trocarAba(aba); abrirResumo(); }
+function abrirResumo() {
   const f = casa.comodos.filter(c => c.fechado);
   const nota = notaPlanta ? `<div class="nota-planta">${notaPlanta}</div>` : ''; notaPlanta = '';
   $('resumo').innerHTML = nota + (f.length
@@ -863,24 +944,186 @@ function trocarAba(qual) {
   for (const q of ['2d', '3d', 'mat']) $('aba' + q).classList.toggle('ativo', qual === q);
   $('planta2d').hidden = qual !== '2d'; $('maquete').hidden = qual !== '3d'; $('materiais').hidden = qual !== 'mat';
   $('dica3d').hidden = qual === 'mat';
-  $('dica3d').textContent = qual === '3d' ? 'arraste para girar · pinça para zoom' : '👆 toque numa parede para ajustar com a trena';
+  $('dica3d').textContent = qual === '3d' ? 'arraste para girar · pinça para zoom' : editando ? 'arraste cantos, portas e cômodos · toque numa parede para digitar a medida' : '👆 toque numa parede para mudar a medida · pinça = zoom · 2 toques = tudo';
+  $('ferramentas2d').hidden = qual !== '2d'; if (qual !== '2d') fecharFolha();
   if (qual !== '3d') parar3d = true;
   if (qual === '2d') desenhar2d(); else if (qual === '3d') abrirMaquete(); else desenharMateriais();
 }
-function desenhar2d() {
+function desenhar2d(manterVista) {
   const cv = $('planta2d'), W = cv.clientWidth * dpr, H = cv.clientHeight * dpr; cv.width = W; cv.height = H;
-  vista2d = enquadrar(W, H, false, 40 * dpr); vista2d.W = W; vista2d.H = H;
-  desenharPlanta(cv.getContext('2d'), W, H, vista2d, { k: dpr, cotas: true, voce: estado.etapa !== 'capa', fundo: '#ffffff' });
+  if (!manterVista || !vista2d) { vista2d = enquadrar(W, H, false, 46 * dpr); vista2d.W = W; vista2d.H = H; }
+  desenharPlanta(cv.getContext('2d'), W, H, vista2d, { k: dpr, cotas: verCotas, moveis: verMoveis, geral: verCotas, voce: estado.etapa !== 'capa' && !editando, fundo: '#ffffff', editar: editando ? { sel: folhaAlvo } : null });
 }
 let vista2d = null;
-$('planta2d').addEventListener('click', e => { // toque numa parede → calibrar com a trena
-  const v = vista2d; if (!v) return;
-  const r = $('planta2d').getBoundingClientRect(), px = (e.clientX - r.left) * dpr, py = (e.clientY - r.top) * dpr;
-  const p = { x: (px - v.W / 2) / v.esc + v.cx, z: (py - v.H / 2) / v.esc + v.cz };
+
+// ---------- ✏️ EDITOR DA PLANTA (como nos apps profissionais) ----------
+// Arrastar cantos (com ímã de 5 cm e de 90°), portas e janelas ao longo da parede e cômodos inteiros;
+// tocar numa parede para digitar a medida exata; acrescentar/remover portas, janelas e passagens;
+// dividir parede (cômodo em L), renomear, apagar; desfazer tudo. A medida digitada "trava" a parede (🔒).
+let editando = false, verMoveis = true, verCotas = true, folhaAlvo = null, arrastoEd = null;
+const pilhaEd = [];
+function lembrar() { pilhaEd.push(JSON.stringify(casa)); if (pilhaEd.length > 50) pilhaEd.shift(); $('btnDesfazerEd').disabled = false; }
+function desfazerEd() {
+  const s = pilhaEd.pop(); if (!s) return;
+  const id = estado.atual && estado.atual.id; casa = JSON.parse(s); estado.atual = id ? achar(id) || null : null;
+  $('btnDesfazerEd').disabled = !pilhaEd.length; fecharFolha(); depoisDeEditar();
+}
+function depoisDeEditar(manter = true) { salvar(); sujar(); desenhar2d(manter); abrirResumo(); }
+function dentro(p, c) { let r = false; for (let i = 0, j = c.length - 1; i < c.length; j = i++) if ((c[i].z > p.z) !== (c[j].z > p.z) && p.x < (c[j].x - c[i].x) * (p.z - c[i].z) / (c[j].z - c[i].z) + c[i].x) r = !r; return r; }
+function reencaixar(cm) { // depois de mexer na geometria: cada abertura continua na SUA parede
+  for (const a of cm.aberturas) {
+    if (a.parede == null || a.parede >= cm.cantos.length) { encaixar(cm); return; }
+    const w = parede(cm, a.parede); a.larg = Math.min(a.larg, w.L * 0.95);
+    const meia = a.larg / 2 / w.L, t = Math.max(meia, Math.min(1 - meia, dot(sub(a.p, w.a), w.u) / w.L));
+    a.t = t; a.p = add(w.a, mul(w.u, t * w.L));
+  }
+}
+function mudarParede(cm, i, L2) { // nova medida: a parede seguinte anda junto (paralela), mantendo os 90°
+  const n = cm.cantos.length, w = parede(cm, i), d = L2 - w.L; if (Math.abs(d) < 0.0005) return;
+  const j = (i + 1) % n, k2 = (i + 2) % n, perp = n >= 4 && Math.abs(dot(w.u, parede(cm, j).u)) < 0.3, mov = mul(w.u, d);
+  const antes = cm.aberturas.map(a => { const wa = parede(cm, a.parede); return { a, s: dot(sub(a.p, wa.a), wa.u), L: wa.L }; });
+  cm.cantos[j] = add(cm.cantos[j], mov); if (perp) cm.cantos[k2] = add(cm.cantos[k2], mov);
+  for (const { a, s, L } of antes) {
+    const wn = parede(cm, a.parede);
+    if (a.parede === i) a.p = add(wn.a, mul(wn.u, s));                         // mantém a distância do começo
+    else if (a.parede === j && perp) a.p = add(a.p, mov);                       // a parede inteira andou
+    else if (a.parede === (perp ? k2 : j)) a.p = sub(wn.b, mul(wn.u, L - s));    // mantém a distância do fim
+  }
+  (cm.travas = cm.travas || {})[i] = +L2.toFixed(3);
+  reencaixar(cm);
+}
+function telaParaMundo(e) {
+  const r = $('planta2d').getBoundingClientRect(), v = vista2d, px = (e.clientX - r.left) * dpr, py = (e.clientY - r.top) * dpr;
+  return { px, py, p: { x: (px - v.W / 2) / v.esc + v.cx, z: (py - v.H / 2) / v.esc + v.cz } };
+}
+function alvoEm(e) {
+  const { px, py, p } = telaParaMundo(e), v = vista2d, T = q => Math.hypot((q.x - v.cx) * v.esc + v.W / 2 - px, (q.z - v.cz) * v.esc + v.H / 2 - py);
+  const fech = casa.comodos.filter(c => c.fechado && c.cantos.length >= 3);
+  if (editando) {
+    for (const cm of fech) for (let i = 0; i < cm.cantos.length; i++) if (T(cm.cantos[i]) < 20 * dpr) return { tipo: 'canto', cm, i, p };
+    for (const cm of fech) for (const a of cm.aberturas) if (T(a.p) < 16 * dpr) return { tipo: 'abertura', cm, a, p };
+  }
   let melhor = null;
-  for (const c of casa.comodos.filter(c => c.fechado)) { const q = naParede(c.cantos, p); if (!melhor || q.d < melhor.d) melhor = { c, i: q.i, d: q.d }; }
-  if (melhor && melhor.d < Math.max(0.3, 28 * dpr / v.esc)) calibrar(melhor.c, melhor.i);
+  for (const cm of fech) { const q = naParede(cm.cantos, p); if (!melhor || q.d < melhor.d) melhor = { cm, i: q.i, d: q.d, q: q.q }; }
+  if (melhor && melhor.d < Math.max(0.18, 16 * dpr / v.esc)) return { tipo: 'parede', cm: melhor.cm, i: melhor.i, p: melhor.q };
+  const cm = fech.find(c => dentro(p, c.cantos)); if (cm && editando) return { tipo: 'comodo', cm, p };
+  return null;
+}
+const ima = (v, passo = 0.05) => Math.round(v / passo) * passo;
+const dedos2d = new Map(); let pinca2d = null, ultimoToque = 0;
+$('planta2d').addEventListener('pointerdown', e => {
+  if (!vista2d) return; $('planta2d').setPointerCapture(e.pointerId); dedos2d.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (dedos2d.size === 2) { // pinça: zoom
+    const [p, q] = [...dedos2d.values()]; pinca2d = { d: Math.hypot(p.x - q.x, p.y - q.y), esc: vista2d.esc }; arrastoEd = null; return;
+  }
+  if (performance.now() - ultimoToque < 300 && !editando) { vista2d = null; desenhar2d(); ultimoToque = 0; return; } // toque duplo: enquadra tudo
+  ultimoToque = performance.now();
+  const a = alvoEm(e);
+  arrastoEd = { a, x0: e.clientX, y0: e.clientY, p0: telaParaMundo(e).p, mexeu: false, vista: { cx: vista2d.cx, cz: vista2d.cz } };
 });
+const soltarDedo = e => { dedos2d.delete(e.pointerId); if (dedos2d.size < 2) pinca2d = null; };
+$('planta2d').addEventListener('pointercancel', soltarDedo);
+$('planta2d').addEventListener('pointermove', e => {
+  if (dedos2d.has(e.pointerId)) dedos2d.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinca2d && dedos2d.size === 2) {
+    const [p, q] = [...dedos2d.values()]; vista2d.esc = Math.max(8 * dpr, Math.min(400 * dpr, pinca2d.esc * Math.hypot(p.x - q.x, p.y - q.y) / pinca2d.d)); desenhar2d(true); return;
+  }
+  const A = arrastoEd; if (!A) return;
+  if (!A.a || (!editando && A.a.tipo === 'parede') || (editando && A.a.tipo === 'parede')) { // arrastar o fundo: move a planta
+    if (Math.hypot(e.clientX - A.x0, e.clientY - A.y0) < 6 && !A.mexeu) return; A.mexeu = true; A.pan = true;
+    vista2d.cx = A.vista.cx - (e.clientX - A.x0) * dpr / vista2d.esc; vista2d.cz = A.vista.cz - (e.clientY - A.y0) * dpr / vista2d.esc; desenhar2d(true); return;
+  }
+  if (!editando) return;
+  if (!A.mexeu && Math.hypot(e.clientX - A.x0, e.clientY - A.y0) < 6) return;
+  if (!A.mexeu) { A.mexeu = true; lembrar(); fecharFolha(); }
+  const p = telaParaMundo(e).p, { cm } = A.a;
+  if (A.a.tipo === 'canto') {
+    const n = cm.cantos.length, viz = [cm.cantos[(A.a.i + n - 1) % n], cm.cantos[(A.a.i + 1) % n]];
+    let x = ima(p.x), z = ima(p.z);
+    for (const q of viz) { if (Math.abs(q.x - p.x) < 0.15) x = q.x; if (Math.abs(q.z - p.z) < 0.15) z = q.z; } // ímã de 90°
+    cm.cantos[A.a.i] = { x, z }; reencaixar(cm);
+  } else if (A.a.tipo === 'abertura') {
+    const w = parede(cm, A.a.a.parede), meia = A.a.a.larg / 2 / w.L, s = ima(dot(sub(p, w.a), w.u), 0.05);
+    A.a.a.t = Math.max(meia, Math.min(1 - meia, s / w.L)); A.a.a.p = add(w.a, mul(w.u, A.a.a.t * w.L));
+  } else if (A.a.tipo === 'comodo') {
+    const d = { x: ima(p.x - A.p0.x), z: ima(p.z - A.p0.z) }; if (!d.x && !d.z) return; A.p0 = add(A.p0, d);
+    cm.cantos = cm.cantos.map(q => add(q, d)); cm.aberturas.forEach(b => { b.p = add(b.p, d); }); cm.origem = add(cm.origem, d);
+  }
+  desenhar2d(true);
+});
+$('planta2d').addEventListener('pointerup', e => {
+  soltarDedo(e); const A = arrastoEd; arrastoEd = null; if (!A) return;
+  if (A.pan) return;
+  if (A.mexeu) { depoisDeEditar(); return; }
+  if (A.a) abrirFolha(A.a); else fecharFolha();
+});
+function fecharFolha() { folhaAlvo = null; $('folha').hidden = true; if (vista2d) desenhar2d(true); }
+const btn = (a, txt, cls = '') => `<button data-ed="${a}" class="${cls}">${txt}</button>`;
+function abrirFolha(alvo) {
+  folhaAlvo = alvo; const f = $('folha'), { cm } = alvo; let h = '';
+  if (alvo.tipo === 'parede') {
+    const w = parede(cm, alvo.i), trava = cm.travas && cm.travas[alvo.i] != null;
+    h = `<div class="folha-tit">📏 Parede do(a) ${cm.nome} ${trava ? '<span class="trava">🔒 medida digitada</span>' : ''}</div>
+      <div class="linha-medida">${btn('menos', '−5 cm')}<input id="edMedida" inputmode="decimal" value="${fmt(w.L)}"><span>m</span>${btn('mais', '+5 cm')}${btn('aplicar', 'Aplicar', 'ok')}</div>
+      <div class="folha-nota">A parede seguinte se move junto, mantendo os cantos a 90°.</div>
+      <div class="chips-ed">${btn('trena', '📏 É medida de trena: corrigir a casa toda', 'roxo')}</div>
+      <div class="chips-ed">${btn('add:porta', '➕ 🚪 Porta')}${btn('add:janela', '➕ 🪟 Janela')}${btn('add:passagem', '➕ ↔️ Passagem')}${btn('dividir', '➗ Dividir aqui')}</div>`;
+  } else if (alvo.tipo === 'abertura') {
+    const a = alvo.a;
+    h = `<div class="folha-tit">${ICONE[a.tipo]} ${NOME[a.tipo]} · ${cm.nome}${a.entrada ? ' <small>(liga com outro cômodo)</small>' : ''}</div>
+      <div class="chips-ed">${['porta', 'janela', 'passagem'].map(t => btn('tipo:' + t, `${ICONE[t]} ${NOME[t]}`, a.tipo === t ? 'sel' : '')).join('')}</div>
+      <div class="linha-medida"><span>Largura</span><input id="edMedida" inputmode="decimal" value="${fmt(a.larg)}"><span>m</span>${btn('largura', 'Aplicar', 'ok')}</div>
+      <div class="folha-nota">Arraste a ${NOME[a.tipo].toLowerCase()} na planta para mudar de lugar na parede.</div>
+      <div class="chips-ed">${a.entrada ? '' : btn('remover', '🗑️ Remover', 'perigo')}</div>`;
+  } else if (alvo.tipo === 'canto') {
+    h = `<div class="folha-tit">📍 Canto do(a) ${cm.nome}</div><div class="folha-nota">Arraste o canto: ele "gruda" de 5 em 5 cm e se alinha com os vizinhos (90°).</div>
+      <div class="chips-ed">${cm.cantos.length > 3 ? btn('tirarCanto', '🗑️ Tirar este canto', 'perigo') : ''}${btn('esquadrejar', '📐 Esquadrejar o cômodo')}</div>`;
+  } else if (alvo.tipo === 'comodo') {
+    h = `<div class="folha-tit">🏠 ${cm.nome} · ${fmt(area(cm.cantos), 1)} m²</div>
+      <div class="chips-ed">${NOMES.map(n => btn('nome:' + n, n, cm.nome === n ? 'sel' : '')).join('')}</div>
+      <div class="linha-medida"><span>Pé-direito</span><input id="edMedida" inputmode="decimal" value="${fmt(peDe(cm))}"><span>m</span>${btn('pe', 'Aplicar', 'ok')}</div>
+      <div class="folha-nota">Arraste o cômodo para mudar de lugar na planta.</div>
+      <div class="chips-ed">${btn('esquadrejar', '📐 Esquadrejar')}${btn('apagarComodo', '🗑️ Apagar cômodo', 'perigo')}</div>`;
+  }
+  f.innerHTML = `<button class="folha-x" data-ed="fechar">✕</button>${h}`; f.hidden = false; desenhar2d(true);
+}
+const lerMedida = () => parseFloat(($('edMedida') || { value: '' }).value.replace(',', '.'));
+$('folha').addEventListener('click', e => {
+  const b = e.target.closest('[data-ed]'); if (!b || !folhaAlvo) return;
+  const [acao, x] = b.dataset.ed.split(':'), alvo = folhaAlvo, { cm } = alvo;
+  if (acao === 'fechar') return fecharFolha();
+  if (acao === 'menos' || acao === 'mais') { const v = lerMedida() + (acao === 'mais' ? 0.05 : -0.05); $('edMedida').value = fmt(Math.max(0.3, v)); return; }
+  lembrar();
+  if (acao === 'aplicar') { const v = lerMedida(); if (!(v >= 0.3 && v <= 30)) { pilhaEd.pop(); return aviso('Medida inválida', '#b45309'); } mudarParede(cm, alvo.i, v); }
+  else if (acao === 'trena') { const v = lerMedida(), L = parede(cm, alvo.i).L; if (!(v > 0.3) || v / L > 1.6 || v / L < 0.6) { pilhaEd.pop(); return aviso('Digite a medida da trena perto da medida atual', '#b45309'); } escalar(v / L); notaPlanta = `📏 Calibrada com a trena: tudo foi corrigido em ${v / L >= 1 ? '+' : ''}${fmt((v / L - 1) * 100, 1)}% · altura do celular agora ${fmt(casa.h)} m`; }
+  else if (acao === 'add') { cm.aberturas.push({ id: novoId(), tipo: x, p: alvo.p, larg: LARG[x] }); encaixar(cm); }
+  else if (acao === 'dividir') { cm.cantos.splice(alvo.i + 1, 0, { x: alvo.p.x, z: alvo.p.z }); encaixar(cm); if (cm.travas) cm.travas = {}; }
+  else if (acao === 'tipo') { alvo.a.tipo = x; if (x !== 'janela') delete alvo.a.sugerida; }
+  else if (acao === 'largura') { const v = lerMedida(); if (v > 0.3 && v < 4) { alvo.a.larg = v; reencaixar(cm); } }
+  else if (acao === 'remover') cm.aberturas.splice(cm.aberturas.indexOf(alvo.a), 1);
+  else if (acao === 'tirarCanto') { cm.cantos.splice(alvo.i, 1); encaixar(cm); if (cm.travas) cm.travas = {}; }
+  else if (acao === 'esquadrejar') { cm.cantos = esquadrejar(cm.cantos); encaixar(cm); }
+  else if (acao === 'nome') cm.nome = x;
+  else if (acao === 'pe') { const v = lerMedida(); if (v > 1.8 && v < 6) cm.pe = v; }
+  else if (acao === 'apagarComodo') {
+    if (!confirm(`Apagar o(a) ${cm.nome} da planta?`)) { pilhaEd.pop(); return; }
+    casa.comodos.splice(casa.comodos.indexOf(cm), 1);
+    for (const c of casa.comodos) c.aberturas.forEach(a => { if (a.liga && a.liga.c === cm.id) delete a.liga; });
+    if (estado.atual === cm) estado.atual = null;
+  }
+  const reabrir = ['tipo', 'largura', 'aplicar', 'pe', 'nome'].includes(acao);
+  folhaAlvo = null; $('folha').hidden = true; depoisDeEditar(acao !== 'apagarComodo' && acao !== 'trena');
+  if (reabrir && alvo.tipo !== 'comodo' || acao === 'nome' || acao === 'pe') abrirFolha(alvo);
+});
+function modoEditar(sim) {
+  editando = sim; $('btnEditar').classList.toggle('ligado', sim); $('btnEditar').textContent = sim ? '✔ Pronto' : '✏️ Editar';
+  $('dica3d').textContent = sim ? 'arraste cantos, portas e cômodos · toque numa parede para digitar a medida' : '👆 toque numa parede para mudar a medida';
+  fecharFolha();
+}
+$('btnEditar').addEventListener('click', () => modoEditar(!editando));
+$('btnDesfazerEd').addEventListener('click', desfazerEd);
+$('btnMoveisPl').addEventListener('click', () => { verMoveis = !verMoveis; $('btnMoveisPl').classList.toggle('ligado', verMoveis); desenhar2d(true); });
+$('btnCotasPl').addEventListener('click', () => { verCotas = !verCotas; $('btnCotasPl').classList.toggle('ligado', verCotas); desenhar2d(true); });
 $('aba2d').addEventListener('click', () => trocarAba('2d'));
 $('aba3d').addEventListener('click', () => trocarAba('3d'));
 $('abamat').addEventListener('click', () => trocarAba('mat'));
@@ -973,7 +1216,7 @@ async function compartilhar() { // imagem da planta com medidas, para mandar ao 
   g.font = '600 30px -apple-system, Segoe UI, Arial'; g.fillStyle = '#475569';
   g.fillText(`${f.length} cômodo(s) · ${fmt(areaTotal(), 1)} m² · ${new Date().toLocaleDateString('pt-BR')} · Decora RA`, 50, 136);
   g.save(); g.translate(0, 170);
-  const v = enquadrar(W, W, false, 90); desenharPlanta(g, W, W, v, { k: 2.2, cotas: true, fundo: '#ffffff' });
+  const v = enquadrar(W, W, false, 120); desenharPlanta(g, W, W, v, { k: 2.2, cotas: true, geral: true, moveis: verMoveis, fundo: '#ffffff' });
   g.fillStyle = '#0f172a'; g.fillRect(60, W - 50, v.esc, 10); g.font = '700 26px Arial'; g.fillText('1 m', 60 + v.esc + 12, W - 36); // escala gráfica
   g.restore();
   const M = materiais();
@@ -989,7 +1232,53 @@ async function compartilhar() { // imagem da planta com medidas, para mandar ao 
   try { if (navigator.canShare && navigator.canShare({ files: [arq] })) { await navigator.share({ files: [arq], title: 'Planta da casa' }); return; } } catch (e) { if (e.name === 'AbortError') return; }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = arq.name; a.click();
 }
-$('btnCompartilhar').addEventListener('click', compartilhar);
+// 📄 PDF profissional: folha A4 deitada, planta em escala padrão de arquitetura, carimbo e quadro de áreas
+async function exportarPDF() {
+  if (!window.jspdf) await new Promise((ok, erro) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload = ok; s.onerror = erro; document.head.appendChild(s); });
+  const f = casa.comodos.filter(c => c.fechado && c.cantos.length >= 3); if (!f.length) return aviso('Conclua um cômodo primeiro', '#b45309');
+  const { jsPDF } = window.jspdf, pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const LW = 196, LH = 150, PX = 12; // área da planta no papel (mm) e resolução (px por mm)
+  const B = limites(f.flatMap(c => c.cantos)), lx = B.x1 - B.x0 + 1.6, lz = B.z1 - B.z0 + 1.6; // casa + margem para as cotas (m)
+  const ESC = [25, 50, 75, 100, 125, 150, 200, 250].find(e => lx * 1000 / e <= LW && lz * 1000 / e <= LH) || 300;
+  const W = LW * PX, H = LH * PX, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+  const v = { cx: (B.x0 + B.x1) / 2, cz: (B.z0 + B.z1) / 2, esc: 1000 / ESC * PX };
+  desenharPlanta(g, W, H, v, { k: 2.6, cotas: true, geral: true, moveis: verMoveis, fundo: '#ffffff', semGrade: true });
+  g.fillStyle = '#0f172a'; for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#ffffff' : '#0f172a'; g.fillRect(40 + i * v.esc * 0.5, H - 60, v.esc * 0.5, 14); } // escala gráfica 0-2 m
+  g.strokeStyle = '#0f172a'; g.lineWidth = 2; g.strokeRect(40, H - 60, v.esc * 2, 14); g.font = '700 30px Arial'; g.fillStyle = '#0f172a'; g.textAlign = 'left';
+  g.fillText('0', 34, H - 70); g.fillText('1 m', 40 + v.esc - 18, H - 70); g.fillText('2 m', 40 + v.esc * 2 - 18, H - 70);
+  pdf.setDrawColor(15, 23, 42); pdf.setLineWidth(0.6); pdf.rect(6, 6, 285, 198); pdf.setLineWidth(0.25); pdf.rect(8, 8, 281, 194);
+  pdf.addImage(cv.toDataURL('image/jpeg', 0.93), 'JPEG', 10, 22, LW, LH);
+  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16); pdf.text('PLANTA BAIXA', 12, 17);
+  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.text(`Escala 1:${ESC} (folha A4)  ·  medidas em metros  ·  PD = pé-direito`, 60, 17);
+  let y = 22; const col = 212, M = materiais();
+  const linha = (a, b, bold) => { pdf.setFont('helvetica', bold ? 'bold' : 'normal'); pdf.text(a, col, y); if (b != null) pdf.text(b, 286, y, { align: 'right' }); y += 5; };
+  pdf.setFontSize(11); linha('QUADRO DE ÁREAS', null, true); pdf.setFontSize(8.5); y += 1;
+  linha('Cômodo', 'Área · perímetro · PD', true);
+  for (const c of f) { let per = 0; for (let i = 0; i < c.cantos.length; i++) per += parede(c, i).L; linha(c.nome, `${fmt(area(c.cantos))} m² · ${fmt(per)} m · ${fmt(peDe(c))} m`); }
+  pdf.line(col, y - 3.5, 286, y - 3.5); linha('Área total', `${fmt(areaTotal())} m²`, true); y += 3;
+  pdf.setFontSize(11); linha('MATERIAIS (estimativa)', null, true); pdf.setFontSize(8.5); y += 1;
+  linha('Piso (área + 10%)', `${fmt(M.piso, 1)} m²`); linha('Rodapé', `${Math.ceil(M.rodape)} m`); linha('Paredes (sem vãos)', `${fmt(M.paredes, 1)} m²`);
+  linha('Tinta (2 demãos)', `${fmt(M.tinta, 1)} L · ${Math.ceil(M.tinta / 3.6)} galões`); y += 3;
+  const n = t => f.reduce((s, c) => s + c.aberturas.filter(a => a.tipo === t && !a.entrada).length, 0);
+  pdf.setFontSize(11); linha('ESQUADRIAS', null, true); pdf.setFontSize(8.5); y += 1;
+  linha('Portas', String(n('porta'))); linha('Janelas', String(n('janela'))); linha('Passagens', String(n('passagem')));
+  // carimbo (selo) no canto, como nas pranchas de arquitetura
+  pdf.setLineWidth(0.4); pdf.rect(col - 2, 160, 79, 40); pdf.line(col - 2, 172, 289, 172); pdf.line(col - 2, 186, 289, 186);
+  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(10); pdf.text('Decora RA · Mapear a casa', col, 166);
+  pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7.5); pdf.text('Levantamento por celular (giroscópio + trigonometria' + (f.some(c => c.ia) ? ' + IA' : '') + ')', col, 170.5);
+  pdf.setFontSize(8.5); pdf.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, col, 177.5); pdf.text(`Escala: 1:${ESC}`, 286, 177.5, { align: 'right' });
+  pdf.text(`${f.length} cômodo(s) · ${fmt(areaTotal())} m²`, col, 182.5); pdf.text(casa.calibrado ? 'Calibrada com trena' : 'Sem calibração', 286, 182.5, { align: 'right' });
+  pdf.setFontSize(6.8); pdf.text(pdf.splitTextToSize('Medidas aproximadas (erro típico de 2 a 5%). Confira as medidas críticas com trena antes de comprar ou executar.', 77), col, 191);
+  const blob = pdf.output('blob'), arq = new File([blob], 'planta-da-casa.pdf', { type: 'application/pdf' });
+  window.ULTIMO_PDF = blob.size; window.ULTIMO_PDF_URL = pdf.output('datauristring');
+  try { if (navigator.canShare && navigator.canShare({ files: [arq] })) { await navigator.share({ files: [arq], title: 'Planta da casa' }); return; } } catch (e) { if (e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = arq.name; a.click();
+}
+$('btnCompartilhar').addEventListener('click', () => { $('menuEnviar').hidden = !$('menuEnviar').hidden; });
+$('menuEnviar').addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return; $('menuEnviar').hidden = true;
+  try { if (b.dataset.f === 'pdf') { aviso('📄 Gerando o PDF…', '#0f172a'); await exportarPDF(); } else await compartilhar(); } catch (err) { aviso('Não foi possível gerar: ' + err.message, '#b91c1c'); }
+});
 
 // ---------- capa ----------
 function capa() {
@@ -1018,7 +1307,7 @@ $('gl').addEventListener('pointermove', e => {
 
 // para testes automáticos e demonstração no PC
 window.MAPA = {
-  estado, ia, casa: () => casa, executar, simIr(x, z) { if (simVR) { simVR.x = x; simVR.z = z; } }, abrirPlanta, trocarAba, compartilhar, materiais, calibrar: (c, i) => calibrar(casa.comodos[c], i), vista2d: () => vista2d,
+  estado, ia, casa: () => casa, executar, vista2d: () => vista2d, modoEditar, mudarParede, exportarPDF, simIr(x, z) { if (simVR) { simVR.x = x; simVR.z = z; } }, abrirPlanta, trocarAba, compartilhar, materiais, calibrar: (c, i) => calibrar(casa.comodos[c], i), vista2d: () => vista2d,
   olhar(yaw, pitch) { estado.pc = true; estado.yaw = yaw; estado.pitch = pitch; },
   mirarEm(x, z) { // aponta a mira para o ponto (x, z) do chão
     const o = origemAtual(), dx = x - o.x, dz = z - o.z;

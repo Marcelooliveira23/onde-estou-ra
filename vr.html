@@ -42,9 +42,13 @@
   .comodos-chips { display: flex; gap: 6px; overflow-x: auto; margin-top: 6px; }
   .comodos-chips button { flex: none; font: inherit; font-size: 13px; font-weight: 800; padding: 6px 11px; border-radius: 99px; border: 2px solid #0f172a; background: #fff; }
   .comodos-chips button.ativo { background: #0f172a; color: #fff; }
-  #selecao { display: flex; align-items: center; gap: 6px; }
+  #selecao { display: flex; align-items: center; gap: 5px; }
+  #selecao b small { font-weight: 600; color: #64748b; font-size: 12px; }
+  .auto { display: flex; gap: 6px; margin-top: 8px; }
+  .auto button { font: inherit; font-weight: 800; font-size: 13.5px; border: 0; border-radius: 12px; padding: 9px 12px; background: linear-gradient(135deg, #7c3aed, #2563eb); color: #fff; flex: 1; }
+  .auto button + button { flex: none; background: #e2e8f0; color: #334155; }
   #selecao b { flex: 1; font-size: 15px; }
-  #selecao button { font: inherit; font-weight: 800; font-size: 14px; border: 2px solid #0f172a; border-radius: 12px; background: #fff; padding: 8px 10px; }
+  #selecao button { font: inherit; font-weight: 800; font-size: 14px; border: 2px solid #0f172a; border-radius: 12px; background: #fff; padding: 8px 8px; }
   #selecao button.ok { background: #16a34a; border-color: #16a34a; color: #fff; }
   #selecao button.apagar { border-color: #ef4444; color: #ef4444; }
   #joy { left: 18px; bottom: 210px; width: 112px; height: 112px; border-radius: 50%; background: rgba(15,23,42,.35); border: 3px solid rgba(255,255,255,.7); touch-action: none; }
@@ -82,7 +86,7 @@
   <div id="painelNormal">
     <div class="abas-painel"><button id="tMob" class="ativo">🛋️ Mobiliar</button><button id="tPintar">🎨 Pintar</button><button id="tOcultar" class="seta" title="Esconder">▾</button></div>
     <div id="painelCorpo">
-      <div id="corpoMob"><div id="catalogoVr"></div><p id="dicaVr">Escolha um móvel e <b>toque no chão</b> (ou na parede, para quadros e relógio).</p></div>
+      <div id="corpoMob"><div class="auto"><button id="btnAuto">✨ Mobiliar a casa toda</button><button id="btnLimpar">🧹 Esvaziar</button></div><div id="catalogoVr"></div><p id="dicaVr">Escolha um móvel e <b>toque no chão</b> (ou na parede, para quadros e relógio).</p></div>
       <div id="corpoPintar" hidden>
         <div class="comodos-chips" id="chipsComodo"></div>
         <div class="rotulo">Cor da parede</div><div class="tintas" id="tintas"></div>
@@ -90,7 +94,7 @@
       </div>
     </div>
   </div>
-  <div id="selecao" hidden><b id="selNome"></b><button id="selGirarE">↺</button><button id="selGirar">↻</button><button id="selApagar" class="apagar">🗑️</button><button id="selOk" class="ok">✔</button></div>
+  <div id="selecao" hidden><b id="selNome"></b><button id="selVariar" title="cor / estampa">🎨</button><button id="selDuplicar" title="duplicar">⧉</button><button id="selGirarE">↺</button><button id="selGirar">↻</button><button id="selApagar" class="apagar">🗑️</button><button id="selOk" class="ok">✔</button></div>
 </div>
 
 <button id="sairVr" class="ui" hidden>✕</button>

@@ -18,7 +18,7 @@ import { GLTFLoader } from '../lib/jsm/loaders/GLTFLoader.js';
 import { AlvaAR } from '../lib/alva_ar.js';
 
 window.THREE_MOVEIS = THREE; window.GLTFLOADER_MOVEIS = GLTFLoader;
-await new Promise((ok, erro) => { const s = document.createElement('script'); s.src = 'js/moveis.js'; s.onload = ok; s.onerror = erro; document.head.appendChild(s); });
+for (const arq of ['js/moveis_proc.js', 'js/moveis.js']) await new Promise((ok, erro) => { const s = document.createElement('script'); s.src = arq; s.onload = ok; s.onerror = erro; document.head.appendChild(s); });
 const Moveis = window.Moveis;
 
 const $ = id => document.getElementById(id);
@@ -328,6 +328,7 @@ function colocar(tipo, g, p) {
     o.rotation.x = Math.PI / 2; o.position.z = 0.25;
   }
   if (g.userData.chao && TIPOS[tipo].local === 'parede') o.position.y = TIPOS[tipo].dim[1] / 2; // quadro no chão: apoiado, em pé
+  if (g.userData.chao && TIPOS[tipo].local === 'teto') o.position.y = 2.55; // lustre/pendente: pendurado no teto, acima do ponto tocado
   g.add(o); itens.push(o);
   g.userData.visuais.forEach(v => { v.visible = false; }); // some o anel depois do 1º objeto
   if (navigator.vibrate) navigator.vibrate(30);
@@ -360,7 +361,7 @@ function ui() {
   if (estado.procurar && planos.length) dica('🔍 Aponte para a outra superfície (ex.: a <b>parede</b>) e mexa devagar…');
   else if (estado.sel) {
     const t = TIPOS[estado.sel.userData.tipo], leg = estado.sel.children[0].userData.legenda;
-    $('btnVariar').hidden = t.variantes < 2; $('btnVariar').textContent = t.proc === 'relogio' ? '🎨 cor' : '🎨 arte';
+    $('btnVariar').hidden = t.variantes < 2; $('btnVariar').textContent = t.gera === 'tapete' ? '🎨 estampa' : t.proc === 'relogio' || t.gera ? '🎨 cor' : '🎨 arte';
     $('btnGirar').hidden = !estado.sel.parent.userData.chao;
     dica(`<b>${t.nome}</b>${leg ? ` · <i>${leg}</i>` : ''}<br><small>Arraste para mover · pinça ou − + para o tamanho</small>`);
   }
@@ -385,6 +386,15 @@ $('btnVariar').onclick = () => {
   o.remove(o.children[0]); const m = Moveis.criar(o.userData.tipo, o.userData.v); o.add(m);
   m.userData.pronto.then(() => selecionar(o)); selecionar(o);
 };
+$('btnDuplicar').onclick = () => { // ⧉ mais um igual, ao lado
+  const o = estado.sel; if (!o) return;
+  const { tipo, v, esc } = o.userData, p = o.position.clone(), lado = new THREE.Vector3(Math.cos(o.rotation.y), 0, -Math.sin(o.rotation.y));
+  p.addScaledVector(lado, (TIPOS[tipo].dim[0] + 0.15) * esc);
+  colocar(tipo, o.parent, p); const n = estado.sel;
+  n.position.copy(p); n.rotation.copy(o.rotation); n.userData.esc = esc; n.scale.setScalar(esc);
+  if (v) { n.userData.v = v; n.remove(n.children[0]); n.add(Moveis.criar(tipo, v)); }
+  selecionar(n);
+};
 $('btnRemover').onclick = () => { const o = estado.sel; if (!o) return; o.parent.remove(o); itens.splice(itens.indexOf(o), 1); selecionar(null); };
 $('btnSuperficie').onclick = () => {
   if (estado.modo === 'giro') { paredeVirtual(); return; } // no modo rápido: parede de frente, a 2 m
@@ -407,7 +417,7 @@ $('btnReset').onclick = () => {
 
 // AR nativo do iPhone (AR Quick Look), igual ao do localizador
 const temQL = (() => { try { return document.createElement('a').relList.supports('ar'); } catch (e) { return false; } })();
-$('qlLista').innerHTML = Object.values(TIPOS)
+$('qlLista').innerHTML = Object.values(TIPOS).filter(t => t.usdz)
   .map(t => `<a class="ql-item" rel="ar" href="modelos/usdz/${t.id}.usdz#allowsContentScaling=0"><img src="${t.foto}" alt="" loading="lazy"><span><b>${t.nome}</b><small>${t.local === 'parede' ? 'na parede' : 'no chão'}</small></span></a>`).join('');
 $('qlAviso').hidden = temQL;
 document.querySelectorAll('.ql-item').forEach(a => a.addEventListener('click', e => { if (!temQL) e.preventDefault(); }));

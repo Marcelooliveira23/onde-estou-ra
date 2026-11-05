@@ -210,7 +210,7 @@
     if (sel) {
       const t = TIPOS[sel.userData.d.tipo], leg = sel.children[0] && sel.children[0].userData.legenda;
       $('btnVariar').hidden = t.variantes < 2;
-      $('btnVariar').textContent = t.proc === 'relogio' ? '🎨 cor' : '🎨 arte';
+      $('btnVariar').textContent = t.gera === 'tapete' ? '🎨 estampa' : t.proc === 'relogio' || t.gera ? '🎨 cor' : '🎨 arte';
       $('btnGirar').hidden = t.local !== 'chao';
       dica(`<b>${t.nome}</b>${leg ? ` · <i>${leg}</i>` : ''}<br><small>Arraste para mover${t.local === 'chao' ? ' pelo chão' : ''} · pinça ou − + para o tamanho</small>`);
     } else if (armado) {
@@ -230,7 +230,7 @@
       if (armado && TIPOS[id].gltf) window.Moveis.carregarGltf(TIPOS[id].gltf); // já começa a baixar
       selecionar(null);
     };
-    catalogo = window.Moveis.montarCatalogo($('catalogo'), escolher);
+    catalogo = window.Moveis.montarCatalogo($('catalogo'), escolher, t => t.local !== 'teto'); // na placa não há teto
     $('btnMarcar').onclick = () => escolher('marcador');
     $('btnGirar').onclick = () => { if (sel) { sel.userData.d.rot = ((sel.userData.d.rot || 0) + Math.PI / 4) % (Math.PI * 2); posicionar(sel); salvar(); } };
     $('btnMenor').onclick = () => { if (sel) { sel.userData.d.esc = Math.max(0.3, (sel.userData.d.esc || 1) / 1.15); posicionar(sel); salvar(); } };

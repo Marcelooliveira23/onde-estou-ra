@@ -44,6 +44,9 @@ Gire devagar. Toque no selo roxo **🤖** para mostrar **o que a IA vê** (pared
 
 *(Se a IA errar num cômodo cheio de móveis: 🔄 e marque os 4 cantos com 📍, que funciona sempre.)*
 
+Na planta, toque **✏️ Editar** → toque numa parede → digite a medida da trena → **Aplicar**. Depois **📤 Enviar → 📄 PDF**.
+> "Como num app profissional, eu posso **corrigir qualquer medida à mão**: a parede seguinte se ajusta e os cantos continuam retos. E a planta sai em **PDF, em escala 1:50**, com quadro de áreas, igual uma prancha de arquiteto."
+
 Toque **➡️ Porta**, vá para o próximo cômodo, **mire a porta por onde entrou** → marque os cantos → **✅**.
 > "Quando eu passo pela porta, o app **emenda** o próximo cômodo na planta, porque a porta é o mesmo ponto nos dois cômodos."
 
@@ -54,8 +57,8 @@ Toque **🗺️** → toque numa parede da planta e digite a medida da **trena**
 > "Se eu medir **uma** parede com a trena, o app corrige a casa inteira. No fim eu tenho a **planta com as medidas**, uma **maquete 3D** e a **lista do que comprar**: piso, rodapé e quantos galões de tinta. Dá para mandar tudo para o arquiteto ou o pedreiro."
 
 ### 4d. Realidade Virtual: mobiliar a casa medida (+40 s)
-Na planta, toque **🥽 Mobiliar em VR**. Ponha um **sofá**, uma **mesa** e uma **planta** tocando no chão; em **🎨 Pintar**, troque a cor da parede e o piso.
-> "A planta que eu medi vira uma **casa em realidade virtual**. Eu mobilio e pinto antes de comprar."
+Na planta, toque **🥽 Mobiliar em VR**: a casa **já abre mobiliada** pelo ✨ Mobiliar sozinho. Toque num móvel → **🎨** (troca a cor) e **⧉** (duplica); ponha um **lustre** e um **tapete**; em **🎨 Pintar**, troque a cor da parede e o piso.
+> "A planta que eu medi vira uma **casa em realidade virtual**, e o app já **mobilia cada cômodo sozinho**: a sala com sofá de frente para a TV, o quarto com cama e criados-mudos, a cozinha com balcão e geladeira. São **70 móveis**, a maioria escaneada de objetos reais. Eu troco o que quiser e pinto antes de comprar."
 
 Toque **🚶 Passear** e ande pela casa com o joystick, passando pela porta. Toque **🌙** para ver de noite. Mostre **👓 Óculos VR** por 3 segundos.
 > "E eu posso **andar por dentro** dela, até com óculos de realidade virtual. Então o projeto tem as duas coisas da disciplina: **realidade aumentada**, em cima da câmera, e **realidade virtual**, dentro da casa."

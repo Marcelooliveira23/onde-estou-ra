@@ -18,8 +18,10 @@ se o sofá cabe, se a planta combina, em que altura fica o quadro. Evita compras
 
 ## Catálogo (objetos reais)
 
-- **17 itens**: sofá, poltronas, puff, mesas, estante, cômoda, plantas, vaso de cerâmica, busto de mármore, estátua, molduras, quadro e relógio.
-- **Móveis e objetos:** modelos **escaneados por fotogrametria** de objetos reais (**Poly Haven**, licença **CC0**), com texturas PBR (couro, madeira, mármore).
+- **70 itens, separados por cômodo:** Sala, Quarto, Cozinha, Banheiro, Escritório, Iluminação, Decoração e Parede.
+- **52 móveis e objetos escaneados** por fotogrametria de objetos reais (**Poly Haven**, licença **CC0**), com texturas PBR (couro, madeira, mármore, latão): sofás, poltronas, cama clássica, criados-mudos, cômodas, mesas, cadeiras, banquetas, fogão, escrivaninha, estantes, lustre, pendentes, ventilador de teto, vasos, relógios, espelho…
+- **18 móveis paramétricos** feitos em código, em medidas de mercado, para o que não existe escaneado: **cama de casal e de solteiro, guarda-roupa, sofá moderno, rack com TV 55", geladeira, balcão com pia e cooktop, armário aéreo, vaso sanitário, gabinete com cuba, espelho, box com chuveiro, banheira, tapetes (5 estampas), cortina, luminária de piso, cadeira de escritório, mesa de jantar**. Vários têm **variações de cor/estampa** (botão 🎨).
+- **Itens de teto** (lustre, pendentes, ventilador) ficam pendurados no teto; **⧉ duplicar** faz mais um igual ao lado.
 - **Quadros:** fotos de **obras de arte reais em domínio público** (Wikimedia Commons): *A Noite Estrelada*, *A Grande Onda de Kanagawa*, *Impressão, Nascer do Sol*, *O Quarto em Arles*, *O Beijo*, *Moça com Brinco de Pérola*, *Nenúfares* e *Os Girassóis*. O botão 🎨 troca a obra.
 - **Iluminação realista:** mapa de ambiente (reflexos) + **sombra de contato** sob os móveis.
 - **📸 Foto do ambiente decorado:** junta a câmera e os objetos 3D numa foto e abre o compartilhar do iPhone (WhatsApp, Fotos…).
@@ -56,8 +58,17 @@ se o sofá cabe, se a planta combina, em que altura fica o quadro. Evita compras
 > **Sobre a escala:** sem placa, a câmera sozinha não sabe medidas absolutas. O app supõe o celular a ~1,3 m do chão (pessoa em pé).
 > Se o objeto parecer grande ou pequeno demais, ajuste com − / +. No modo **com placa** a escala é exata (a placa tem 17 cm).
 
+## ✏️ Editar a planta (medidas manuais)
+Na planta 2D: **pinça** = zoom, arrastar = mover, **2 toques** = ver tudo. Toque em **✏️ Editar**:
+- **Toque numa parede** → digite a medida exata (ou −5 cm / +5 cm) → **Aplicar**. A parede seguinte anda junto e os cantos continuam a 90°; a cota fica roxa com 🔒 (medida digitada).
+- Na mesma folha: **📏 É medida de trena** (corrige a casa toda na proporção), **➕ Porta / Janela / Passagem** naquele ponto e **➗ Dividir aqui** (para cômodo em L).
+- **Arraste um canto** (gruda de 5 em 5 cm e se alinha com os vizinhos), **arraste portas e janelas** pela parede, **arraste o cômodo inteiro**.
+- **Toque numa porta/janela**: trocar tipo, largura, remover. **Toque dentro do cômodo**: renomear, pé-direito, esquadrejar, apagar.
+- **↩️ desfaz** qualquer mudança. **🛋️** mostra os móveis do VR na planta e **📐** liga/desliga as cotas.
+- **📤 Enviar → 📄 PDF profissional:** folha A4 em **escala de arquitetura (1:50, 1:75, 1:100…)**, cotas, cota geral, móveis, **quadro de áreas**, materiais, esquadrias e **carimbo**. Ou **🖼️ imagem PNG**.
+
 ## 🥽 Casa em Realidade Virtual
-1. Na planta, toque em **🥽 Mobiliar em VR** (ou na tela inicial, **🥽 Casa em Realidade Virtual**).
+1. Na planta, toque em **🥽 Mobiliar em VR** (ou na tela inicial, **🥽 Casa em Realidade Virtual**). Na 1ª vez a casa **já abre mobiliada**: **✨ Mobiliar sozinho** monta cada cômodo pelo nome (sala com sofá de frente para a TV, quarto com cama e criados-mudos, cozinha com balcão, geladeira e mesa, banheiro com box, vaso e pia…), sem bloquear portas, com cortina em toda janela e luz no teto. **🧹 Esvaziar** tira tudo.
 2. **🏠 Casa:** vista de cima com as paredes cortadas. Escolha um móvel em **🛋️ Mobiliar** e **toque no chão** (quadro e relógio: toque na parede). Toque no móvel para **arrastar, girar ↺ ↻ ou apagar 🗑️**.
 3. **🎨 Pintar:** cor da parede e piso (madeira, madeira escura, porcelanato, mármore, cimento queimado) de cada cômodo.
 4. **🚶 Passear:** você entra na casa, na altura dos olhos. Joystick para andar, arraste para olhar, ou **📱** para olhar mexendo o celular. Toque no chão para ir até lá. As paredes bloqueiam; portas e passagens deixam passar.
@@ -171,7 +182,8 @@ No mesmo endereço, `http://localhost:8080/index.html` usa a **webcam** do PC de
 | App instalável/offline | `manifest.webmanifest`, `sw.js` | PWA |
 
 ## Créditos e licenças
-- **Modelos 3D:** [Poly Haven](https://polyhaven.com) (CC0, domínio público).
+- **Modelos 3D:** [Poly Haven](https://polyhaven.com) (CC0, domínio público). Móveis paramétricos: feitos neste projeto (`js/moveis_proc.js`).
+- **IA:** modelo SegFormer-B0 (ADE20K) convertido pela Xenova/Hugging Face; [transformers.js](https://github.com/huggingface/transformers.js) (Apache-2.0). **PDF:** [jsPDF](https://github.com/parallax/jsPDF) (MIT).
 - **Obras de arte:** fotos em domínio público do [Wikimedia Commons](https://commons.wikimedia.org).
 - **Bibliotecas:** MindAR, A-Frame, three.js e qrcode-generator (MIT); **AlvaAR** (SLAM, **GPL-3.0**; veja `lib/LICENSE-AlvaAR-GPL3.txt`).
 - Feito para este projeto: a interface, o modo decorar (posicionamento por raio, planos, escala), o mapeamento da casa (medição por inclinação, esquadrejamento, emenda dos cômodos, planta e maquete), o localizador (maquete, minimapa, rotas), as placas, o quadro e o relógio 3D.

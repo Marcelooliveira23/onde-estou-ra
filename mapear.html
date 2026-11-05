@@ -32,6 +32,8 @@
   #miraTxt { position: fixed; left: 50%; top: calc(50% + 34px); transform: translateX(-50%); z-index: 5; pointer-events: none;
     background: rgba(15,23,42,.8); color: #fff; font-weight: 800; font-size: 14px; padding: 5px 11px; border-radius: 99px; white-space: nowrap; }
   #miraTxt small { font-weight: 600; opacity: .85; }
+  #lupa { position: fixed; left: calc(50% - 150px); top: calc(50% - 150px); width: 96px; height: 96px; border-radius: 50%; z-index: 5; pointer-events: none;
+    border: 3px solid #fff; box-shadow: 0 2px 12px rgba(0,0,0,.45); background: #000; }
 
   /* planta ao vivo no canto */
   #miniCaixa { position: absolute; right: 12px; top: calc(max(12px, env(safe-area-inset-top)) + 58px); width: min(40vw, 180px);
@@ -87,6 +89,27 @@
   #materiais .compra { margin: 12px 0 8px; background: #dcfce7; border-radius: 10px; padding: 9px 11px; color: #14532d; }
   #materiais .como { font-size: 12px; color: #64748b; line-height: 1.45; margin: 0; }
   .nota-planta { background: #dcfce7; color: #14532d; border-radius: 10px; padding: 6px 9px; margin-bottom: 6px; font-weight: 700; }
+  #ferramentas2d { position: absolute; top: 8px; right: 8px; z-index: 2; display: flex; gap: 5px; }
+  #ferramentas2d button { font: inherit; font-weight: 800; font-size: 13px; border: 1.5px solid #cbd5e1; background: #fff; border-radius: 10px; padding: 6px 9px; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+  #ferramentas2d button.ligado { background: #0f172a; color: #fff; border-color: #0f172a; }
+  #ferramentas2d button:disabled { opacity: .35; }
+  #btnEditar.ligado { background: #16a34a !important; border-color: #16a34a !important; }
+  #folha { position: relative; background: #fff; border-radius: 14px; padding: 10px 12px; margin-top: 8px; box-shadow: 0 4px 18px rgba(0,0,0,.18); border: 2px solid #0f172a; }
+  .folha-tit { font-weight: 800; font-size: 15px; padding-right: 30px; }
+  .folha-tit small { font-weight: 600; color: #64748b; }
+  .folha-x { position: absolute; right: 8px; top: 6px; border: 0; background: #e2e8f0; border-radius: 99px; width: 28px; height: 28px; font-weight: 800; }
+  .trava { font-size: 11px; font-weight: 800; color: #7c3aed; background: #ede9fe; border-radius: 99px; padding: 2px 7px; }
+  .linha-medida { display: flex; gap: 6px; align-items: center; margin-top: 8px; font-weight: 700; color: #334155; }
+  .linha-medida input { width: 82px; font: inherit; font-size: 18px; font-weight: 800; text-align: center; border: 2px solid #0f172a; border-radius: 10px; padding: 5px; }
+  .linha-medida button, .chips-ed button { font: inherit; font-weight: 800; font-size: 13px; border: 1.5px solid #0f172a; background: #fff; border-radius: 10px; padding: 7px 9px; }
+  .linha-medida button.ok { background: #16a34a; border-color: #16a34a; color: #fff; margin-left: auto; }
+  .chips-ed { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chips-ed button.sel { background: #0f172a; color: #fff; }
+  .chips-ed button.roxo { border-color: #7c3aed; color: #7c3aed; }
+  .chips-ed button.perigo { border-color: #ef4444; color: #ef4444; }
+  .folha-nota { font-size: 12px; color: #64748b; margin-top: 6px; }
+  #menuEnviar { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
+  #menuEnviar button { font: inherit; font-weight: 800; font-size: 14px; padding: 11px; border-radius: 12px; border: 2px solid #16a34a; background: #fff; color: #14532d; text-align: left; }
   .dica3d { position: absolute; left: 8px; bottom: 6px; font-size: 11px; color: #64748b; pointer-events: none; }
   .capa-acoes .btn-grande { margin-top: 10px; }
   .ia-opcao { display: flex; gap: 10px; align-items: flex-start; text-align: left; margin: 14px auto 0; max-width: 420px; background: rgba(124,58,237,.18); border: 1.5px solid #7c3aed; border-radius: 14px; padding: 10px 12px; color: #ede9fe; font-size: 14px; line-height: 1.35; }
@@ -136,6 +159,7 @@
     <span><b id="voltaTxt">0%</b><small>da volta</small></span></div>
   <div id="iaChip" hidden title="toque para mostrar/esconder o que a IA vê"></div>
   <div id="miniCaixa"><div class="mapa-titulo"><span>🗺️ PLANTA</span><span id="miniArea"></span></div><canvas id="mini"></canvas></div>
+  <canvas id="lupa" hidden></canvas>
   <div id="mira"></div>
   <div id="miraTxt">incline o celular para o chão</div>
   <div id="aviso" hidden></div>
@@ -145,8 +169,10 @@
 <div id="planta" hidden>
   <div class="planta-cabeca"><h2>🏠 Planta da casa</h2><button id="btnFecharPlanta" class="mini-btn" style="font-size:14px;padding:6px 12px">✕</button></div>
   <div class="abas2"><button id="aba2d" class="ativo">🗺️ Planta</button><button id="aba3d">🧊 Maquete</button><button id="abamat">🧮 Materiais</button></div>
-  <div id="palco"><canvas id="planta2d"></canvas><canvas id="maquete" hidden></canvas><div id="materiais" hidden></div><span id="dica3d" class="dica3d">👆 toque numa parede para ajustar com a trena</span></div>
+  <div id="palco"><div id="ferramentas2d"><button id="btnEditar">✏️ Editar</button><button id="btnDesfazerEd" disabled title="desfazer">↩️</button><button id="btnMoveisPl" class="ligado" title="mostrar móveis">🛋️</button><button id="btnCotasPl" class="ligado" title="mostrar cotas">📐</button></div><canvas id="planta2d"></canvas><canvas id="maquete" hidden></canvas><div id="materiais" hidden></div><span id="dica3d" class="dica3d">👆 toque numa parede para ajustar com a trena</span></div>
+  <div id="folha" hidden></div>
   <div id="resumo"></div>
+  <div id="menuEnviar" hidden><button data-f="pdf">📄 PDF profissional (A4, em escala)</button><button data-f="png">🖼️ Imagem PNG</button></div>
   <div class="planta-rodape"><button id="btnCompartilhar" class="verde">📤 Enviar</button><button id="btnVR" onclick="location.href='vr.html'" style="background:#7c3aed;flex:1.5">🥽 Mobiliar em VR</button><button id="btnContinuar" class="claro">📷 Voltar</button></div>
 </div>
 

@@ -30,27 +30,96 @@
 
   // ---------- catálogo ----------
   // dim = tamanho real aproximado (m) para o "fantasma" enquanto carrega
+  // local: 'chao' (apoiado no chão), 'parede' (costas na parede) ou 'teto' (pendurado: topo no teto)
+  // dim = tamanho real aproximado [largura, altura, profundidade] em metros (fantasma enquanto carrega e layout automático)
+  // ph = modelo escaneado da Poly Haven (pasta modelos/3d/<ph>); gera = móvel paramétrico feito em código (moveis_proc.js)
   const TIPOS = {
-    sofa:            { nome: 'Sofá',               cat: 'Sala',     local: 'chao',   gltf: 'sofa_02', dim: [1.8, 0.71, 0.82] },
-    poltrona:        { nome: 'Poltrona',           cat: 'Sala',     local: 'chao',   gltf: 'ArmChair_01', dim: [0.85, 1.07, 0.77] },
-    poltrona_design: { nome: 'Poltrona design',    cat: 'Sala',     local: 'chao',   gltf: 'mid_century_lounge_chair', dim: [1.0, 1.17, 1.19] },
-    puff:            { nome: 'Puff',               cat: 'Sala',     local: 'chao',   gltf: 'Ottoman_01', dim: [0.88, 0.62, 0.62] },
-    mesa_centro:     { nome: 'Mesa de centro',     cat: 'Mesas',    local: 'chao',   gltf: 'CoffeeTable_01', dim: [1.54, 0.52, 0.97] },
-    mesa_lateral:    { nome: 'Mesa lateral',       cat: 'Mesas',    local: 'chao',   gltf: 'side_table_01', dim: [0.55, 0.55, 0.45] },
-    estante:         { nome: 'Estante',            cat: 'Móveis',   local: 'chao',   gltf: 'wooden_display_shelves_01', girar: -Math.PI / 2, dim: [1.08, 1.56, 0.37] },
-    comoda:          { nome: 'Cômoda alta',        cat: 'Móveis',   local: 'chao',   gltf: 'drawer_cabinet', dim: [1.14, 1.88, 0.49] },
-    planta:          { nome: 'Planta grande',      cat: 'Plantas',  local: 'chao',   gltf: 'potted_plant_02', dim: [0.7, 0.84, 0.66] },
-    suculenta:       { nome: 'Suculenta',          cat: 'Plantas',  local: 'chao',   gltf: 'potted_plant_04', dim: [0.17, 0.27, 0.19] },
-    vaso:            { nome: 'Vaso de cerâmica',   cat: 'Objetos',  local: 'chao',   gltf: 'antique_ceramic_vase_01', dim: [0.26, 0.44, 0.26] },
-    busto:           { nome: 'Busto de mármore',   cat: 'Objetos',  local: 'chao',   gltf: 'marble_bust_01', dim: [0.27, 0.51, 0.3] },
-    cavalo:          { nome: 'Estátua de cavalo',  cat: 'Objetos',  local: 'chao',   gltf: 'horse_statue_01', dim: [0.16, 0.22, 0.11] },
-    quadro:          { nome: 'Quadro famoso',      cat: 'Parede',   local: 'parede', proc: 'quadro', variantes: ARTES.length, dim: [0.7, 0.6, 0.04] },
-    moldura_vertical:{ nome: 'Moldura clássica',   cat: 'Parede',   local: 'parede', gltf: 'hanging_picture_frame_01', arte: 5, variantes: ARTES.length, dim: [0.59, 0.84, 0.02] },
-    moldura_paisagem:{ nome: 'Moldura de madeira', cat: 'Parede',   local: 'parede', gltf: 'hanging_picture_frame_02', arte: 1, variantes: ARTES.length, dim: [0.75, 0.5, 0.03] },
-    relogio:         { nome: 'Relógio de parede',  cat: 'Parede',   local: 'parede', proc: 'relogio', variantes: 2, dim: [0.34, 0.34, 0.07] },
+    // Sala
+    sofa:            { nome: 'Sofá capitonê',      cat: 'Sala',     local: 'chao',   gltf: 'sofa_02', dim: [1.8, 0.71, 0.82], usdz: 1 },
+    sofa_moderno:    { nome: 'Sofá moderno',       cat: 'Sala',     local: 'chao',   gera: 'sofa_moderno', dim: [2.1, 0.86, 0.92] },
+    sofa_classico:   { nome: 'Sofá clássico',      cat: 'Sala',     local: 'chao',   gltf: 'Sofa_01', dim: [1.57, 0.8, 0.66] },
+    sofa_tecido:     { nome: 'Sofá de tecido',     cat: 'Sala',     local: 'chao',   gltf: 'sofa_03', dim: [2.0, 0.95, 0.9] },
+    poltrona:        { nome: 'Poltrona',           cat: 'Sala',     local: 'chao',   gltf: 'ArmChair_01', dim: [0.85, 1.07, 0.77], usdz: 1 },
+    poltrona_design: { nome: 'Poltrona design',    cat: 'Sala',     local: 'chao',   gltf: 'mid_century_lounge_chair', dim: [1.0, 1.17, 1.19], usdz: 1 },
+    poltrona_moderna:{ nome: 'Poltrona de couro',  cat: 'Sala',     local: 'chao',   gltf: 'modern_arm_chair_01', dim: [0.82, 0.99, 1.02] },
+    cadeira_balanco: { nome: 'Cadeira de balanço', cat: 'Sala',     local: 'chao',   gltf: 'Rockingchair_01', dim: [0.71, 0.99, 0.83] },
+    puff:            { nome: 'Puff',               cat: 'Sala',     local: 'chao',   gltf: 'Ottoman_01', dim: [0.88, 0.62, 0.62], usdz: 1 },
+    mesa_centro:     { nome: 'Mesa de centro',     cat: 'Sala',     local: 'chao',   gltf: 'CoffeeTable_01', dim: [1.54, 0.52, 0.97], usdz: 1 },
+    mesa_centro_moderna: { nome: 'Mesa de centro moderna', cat: 'Sala', local: 'chao', gltf: 'modern_coffee_table_01', dim: [1.2, 0.39, 0.6] },
+    mesa_centro_redonda: { nome: 'Mesa de centro redonda', cat: 'Sala', local: 'chao', gltf: 'coffee_table_round_01', dim: [0.9, 0.49, 0.9] },
+    mesa_lateral:    { nome: 'Mesa lateral',       cat: 'Sala',     local: 'chao',   gltf: 'side_table_01', dim: [0.55, 0.55, 0.45], usdz: 1 },
+    rack_tv:         { nome: 'Rack com TV 55"',    cat: 'Sala',     local: 'chao',   gera: 'rack_tv', dim: [1.8, 1.27, 0.42] },
+    aparador:        { nome: 'Aparador / buffet',  cat: 'Sala',     local: 'chao',   gltf: 'modern_wooden_cabinet', dim: [2.0, 0.68, 0.52] },
+    estante:         { nome: 'Estante',            cat: 'Sala',     local: 'chao',   gltf: 'wooden_display_shelves_01', girar: -Math.PI / 2, dim: [1.08, 1.56, 0.37], usdz: 1 },
+    tapete:          { nome: 'Tapete',             cat: 'Sala',     local: 'chao',   gera: 'tapete', dim: [2.0, 0.012, 1.4] },
+    // Quarto
+    cama_casal:      { nome: 'Cama de casal',      cat: 'Quarto',   local: 'chao',   gera: 'cama_casal', dim: [1.72, 1.2, 2.08] },
+    cama_solteiro:   { nome: 'Cama de solteiro',   cat: 'Quarto',   local: 'chao',   gera: 'cama_solteiro', dim: [1.02, 1.2, 1.98] },
+    cama_classica:   { nome: 'Cama clássica',      cat: 'Quarto',   local: 'chao',   gltf: 'GothicBed_01', dim: [1.49, 1.53, 2.04] },
+    guarda_roupa:    { nome: 'Guarda-roupa',       cat: 'Quarto',   local: 'chao',   gera: 'guarda_roupa', dim: [1.8, 2.1, 0.6] },
+    criado_mudo:     { nome: 'Criado-mudo',        cat: 'Quarto',   local: 'chao',   gltf: 'ClassicNightstand_01', dim: [0.57, 0.7, 0.42] },
+    criado_pintado:  { nome: 'Criado-mudo azul',   cat: 'Quarto',   local: 'chao',   gltf: 'painted_wooden_nightstand', dim: [0.5, 0.62, 0.51] },
+    comoda:          { nome: 'Cômoda alta',        cat: 'Quarto',   local: 'chao',   gltf: 'drawer_cabinet', dim: [1.14, 1.88, 0.49], usdz: 1 },
+    comoda_classica: { nome: 'Cômoda clássica',    cat: 'Quarto',   local: 'chao',   gltf: 'GothicCommode_01', dim: [1.2, 1.21, 0.58] },
+    cortina:         { nome: 'Cortina',            cat: 'Quarto',   local: 'parede', gera: 'cortina', dim: [2.2, 2.4, 0.12], alturaCentro: 1.3 },
+    // Cozinha e jantar
+    balcao_cozinha:  { nome: 'Balcão com pia e cooktop', cat: 'Cozinha', local: 'chao', gera: 'balcao_cozinha', dim: [2.02, 1.2, 0.62] },
+    armario_aereo:   { nome: 'Armário aéreo',      cat: 'Cozinha',  local: 'parede', gera: 'armario_aereo', dim: [1.2, 0.7, 0.35], alturaCentro: 1.85 },
+    geladeira:       { nome: 'Geladeira',          cat: 'Cozinha',  local: 'chao',   gera: 'geladeira', dim: [0.7, 1.85, 0.75] },
+    fogao:           { nome: 'Fogão',              cat: 'Cozinha',  local: 'chao',   gltf: 'electric_stove', dim: [0.5, 0.86, 0.65] },
+    mesa_jantar:     { nome: 'Mesa de jantar',     cat: 'Cozinha',  local: 'chao',   gera: 'mesa_jantar', dim: [1.6, 0.77, 0.9] },
+    mesa_toalha:     { nome: 'Mesa com toalha',    cat: 'Cozinha',  local: 'chao',   gltf: 'dining_table', dim: [2.0, 0.88, 1.2] },
+    mesa_bistro:     { nome: 'Mesa bistrô',        cat: 'Cozinha',  local: 'chao',   gltf: 'round_wooden_table_01', dim: [0.9, 0.78, 0.9] },
+    cadeira_jantar:  { nome: 'Cadeira de jantar',  cat: 'Cozinha',  local: 'chao',   gltf: 'dining_chair_02', dim: [0.43, 0.97, 0.58] },
+    banqueta:        { nome: 'Banqueta',           cat: 'Cozinha',  local: 'chao',   gltf: 'bar_chair_round_01', dim: [0.48, 0.75, 0.49] },
+    // Banheiro
+    vaso_sanitario:  { nome: 'Vaso sanitário',     cat: 'Banheiro', local: 'chao',   gera: 'vaso_sanitario', dim: [0.42, 0.82, 0.68] },
+    pia_banheiro:    { nome: 'Gabinete com cuba',  cat: 'Banheiro', local: 'chao',   gera: 'pia_banheiro', dim: [0.82, 1.05, 0.48] },
+    espelho_banheiro:{ nome: 'Espelho',            cat: 'Banheiro', local: 'parede', gera: 'espelho_banheiro', dim: [0.74, 0.94, 0.03], alturaCentro: 1.55 },
+    box_chuveiro:    { nome: 'Box com chuveiro',   cat: 'Banheiro', local: 'chao',   gera: 'box_chuveiro', dim: [0.9, 2.05, 0.9] },
+    banheira:        { nome: 'Banheira',           cat: 'Banheiro', local: 'chao',   gera: 'banheira', dim: [1.7, 0.75, 0.75] },
+    // Escritório
+    escrivaninha:    { nome: 'Escrivaninha',       cat: 'Escritório', local: 'chao', gltf: 'metal_office_desk', dim: [1.6, 0.79, 0.76] },
+    cadeira_escritorio: { nome: 'Cadeira de escritório', cat: 'Escritório', local: 'chao', gera: 'cadeira_escritorio', dim: [0.62, 1.15, 0.62] },
+    cadeira_verde:   { nome: 'Cadeira estofada',   cat: 'Escritório', local: 'chao', gltf: 'GreenChair_01', dim: [0.67, 1.06, 0.66] },
+    luminaria_mesa:  { nome: 'Luminária de mesa',  cat: 'Escritório', local: 'chao', gltf: 'desk_lamp_arm_01', dim: [0.62, 0.88, 0.41] },
+    notebook:        { nome: 'Notebook retrô',     cat: 'Escritório', local: 'chao', gltf: 'classic_laptop', dim: [0.33, 0.27, 0.25] },
+    estante_aco:     { nome: 'Estante de aço',     cat: 'Escritório', local: 'chao', gltf: 'steel_frame_shelves_01', dim: [1.1, 2.14, 0.5] },
+    estante_livros:  { nome: 'Estante de madeira', cat: 'Escritório', local: 'chao', gltf: 'wooden_bookshelf_worn', dim: [1.37, 2.06, 0.58] },
+    // Iluminação
+    lustre:          { nome: 'Lustre',             cat: 'Iluminação', local: 'teto', gltf: 'Chandelier_01', dim: [0.75, 0.8, 0.82] },
+    pendente:        { nome: 'Pendente moderno',   cat: 'Iluminação', local: 'teto', gltf: 'modern_ceiling_lamp_01', dim: [0.43, 0.95, 0.43] },
+    pendente_industrial: { nome: 'Pendente industrial', cat: 'Iluminação', local: 'teto', gltf: 'hanging_industrial_lamp', dim: [0.55, 1.36, 0.55] },
+    ventilador:      { nome: 'Ventilador de teto', cat: 'Iluminação', local: 'teto', gltf: 'ceiling_fan', dim: [1.46, 0.52, 1.46] },
+    luminaria_piso:  { nome: 'Luminária de piso',  cat: 'Iluminação', local: 'chao', gera: 'luminaria_piso', dim: [0.48, 1.65, 0.48] },
+    // Plantas e decoração
+    planta:          { nome: 'Planta grande',      cat: 'Decoração', local: 'chao',  gltf: 'potted_plant_02', dim: [0.7, 0.84, 0.66], usdz: 1 },
+    suculenta:       { nome: 'Suculenta',          cat: 'Decoração', local: 'chao',  gltf: 'potted_plant_04', dim: [0.17, 0.27, 0.19], usdz: 1 },
+    floreira:        { nome: 'Floreira de madeira',cat: 'Decoração', local: 'chao',  gltf: 'planter_box_01', dim: [0.91, 0.42, 0.41] },
+    vaso:            { nome: 'Vaso de cerâmica',   cat: 'Decoração', local: 'chao',  gltf: 'antique_ceramic_vase_01', dim: [0.26, 0.44, 0.26], usdz: 1 },
+    vaso_branco:     { nome: 'Vaso branco',        cat: 'Decoração', local: 'chao',  gltf: 'ceramic_vase_01', dim: [0.2, 0.4, 0.2] },
+    vaso_alto:       { nome: 'Vaso alto',          cat: 'Decoração', local: 'chao',  gltf: 'ceramic_vase_03', dim: [0.11, 0.41, 0.11] },
+    vaso_latao:      { nome: 'Vaso de latão',      cat: 'Decoração', local: 'chao',  gltf: 'brass_vase_01', dim: [0.23, 0.69, 0.23] },
+    porta_retrato:   { nome: 'Porta-retrato',      cat: 'Decoração', local: 'chao',  gltf: 'standing_picture_frame_01', arte: 2, variantes: ARTES.length, dim: [0.2, 0.25, 0.1] },
+    carrilhao:       { nome: 'Relógio carrilhão',  cat: 'Decoração', local: 'chao',  gltf: 'vintage_grandfather_clock_01', dim: [0.6, 2.19, 0.45] },
+    busto:           { nome: 'Busto de mármore',   cat: 'Decoração', local: 'chao',  gltf: 'marble_bust_01', dim: [0.27, 0.51, 0.3], usdz: 1 },
+    cavalo:          { nome: 'Estátua de cavalo',  cat: 'Decoração', local: 'chao',  gltf: 'horse_statue_01', dim: [0.16, 0.22, 0.11], usdz: 1 },
+    // Parede
+    quadro:          { nome: 'Quadro famoso',      cat: 'Parede',   local: 'parede', proc: 'quadro', variantes: ARTES.length, dim: [0.7, 0.6, 0.04], usdz: 1 },
+    moldura_vertical:{ nome: 'Moldura clássica',   cat: 'Parede',   local: 'parede', gltf: 'hanging_picture_frame_01', arte: 5, variantes: ARTES.length, dim: [0.59, 0.84, 0.02], usdz: 1 },
+    moldura_paisagem:{ nome: 'Moldura de madeira', cat: 'Parede',   local: 'parede', gltf: 'hanging_picture_frame_02', arte: 1, variantes: ARTES.length, dim: [0.75, 0.5, 0.03], usdz: 1 },
+    quadro_paisagem: { nome: 'Paisagem a óleo',    cat: 'Parede',   local: 'parede', gltf: 'fancy_picture_frame_01', dim: [0.6, 0.46, 0.02] },
+    espelho_classico:{ nome: 'Espelho ornamentado',cat: 'Parede',   local: 'parede', gltf: 'ornate_mirror_01', dim: [0.49, 0.74, 0.03] },
+    relogio:         { nome: 'Relógio de parede',  cat: 'Parede',   local: 'parede', proc: 'relogio', variantes: 2, dim: [0.34, 0.34, 0.07], usdz: 1 },
+    relogio_moderno: { nome: 'Relógio moderno',    cat: 'Parede',   local: 'parede', gltf: 'wall_clock', dim: [0.32, 0.32, 0.05] },
   };
-  for (const [id, t] of Object.entries(TIPOS)) { t.id = id; t.variantes = t.variantes || 1; t.foto = BASE + 'fotos/' + id + '.jpg'; }
-  const CATEGORIAS = ['Sala', 'Mesas', 'Móveis', 'Plantas', 'Objetos', 'Parede'];
+  const PROC = window.criarMoveisProc ? window.criarMoveisProc(THREE) : {};
+  for (const [id, t] of Object.entries(TIPOS)) {
+    if (t.gera && !PROC[t.gera]) { delete TIPOS[id]; continue; } // moveis_proc.js não carregado nesta página
+    if (t.gera) { t.variantes = PROC[t.gera].vs.length; t.nomesVar = PROC[t.gera].vs; }
+  }
+  const CATEGORIAS = ['Sala', 'Quarto', 'Cozinha', 'Banheiro', 'Escritório', 'Iluminação', 'Decoração', 'Parede'];
+  for (const [id, t] of Object.entries(TIPOS)) { t.id = id; t.variantes = t.variantes || 1; t.foto = BASE + 'fotos/' + (t.usdz || t.proc ? id : t.gltf ? 'ph_' + t.gltf : 'gera_' + id) + '.jpg'; }
 
   // ---------- carregamento dos modelos reais (com cache) ----------
   const cache = {};
@@ -67,6 +136,7 @@
     const caixa = new THREE.Box3().setFromObject(obj);
     const c = caixa.getCenter(new THREE.Vector3());
     if (local === 'parede') obj.position.sub(new THREE.Vector3(c.x, c.y, caixa.min.z));
+    else if (local === 'teto') obj.position.sub(new THREE.Vector3(c.x, caixa.max.y, c.z));
     else obj.position.sub(new THREE.Vector3(c.x, caixa.min.y, c.z));
     return caixa.getSize(new THREE.Vector3());
   }
@@ -186,16 +256,17 @@
   function criar(tipo, v = 0, opcoes = {}) {
     const t = TIPOS[tipo];
     const g = new THREE.Group();
-    if (t.proc) {
-      const m = t.proc === 'quadro' ? quadro(v) : relogio(v);
+    if (t.proc || t.gera) {
+      const m = t.gera ? PROC[t.gera].f(v % t.variantes) : t.proc === 'quadro' ? quadro(v) : relogio(v);
       normalizar(m, t.local); g.add(m);
       g.userData.atualizar = m.userData.atualizar; g.userData.legenda = m.userData.legenda;
+      if (t.gera && t.local === 'chao' && !opcoes.semSombra && t.gera !== 'tapete') g.add(sombra(t.dim[0], t.dim[2]));
       g.userData.pronto = Promise.resolve(g);
       return g;
     }
     const [dx, dy, dz] = t.dim;
     const fantasma = new THREE.Mesh(new THREE.BoxGeometry(dx, dy, dz), new THREE.MeshBasicMaterial({ color: '#38bdf8', transparent: true, opacity: 0.25, depthWrite: false }));
-    fantasma.position.set(0, t.local === 'parede' ? 0 : dy / 2, t.local === 'parede' ? dz / 2 : 0);
+    fantasma.position.set(0, t.local === 'parede' ? 0 : t.local === 'teto' ? -dy / 2 : dy / 2, t.local === 'parede' ? dz / 2 : 0);
     g.add(fantasma);
     g.userData.pronto = carregarGltf(t.gltf).then(cena => {
       const m = cena.clone(true);
@@ -225,7 +296,7 @@
   }
 
   // ---------- catálogo visual (abas + cartões com foto) ----------
-  function montarCatalogo(caixa, aoEscolher) {
+  function montarCatalogo(caixa, aoEscolher, filtro = () => true) {
     caixa.innerHTML = '';
     caixa.classList.add('catalogo-visual');
     const abas = document.createElement('div'); abas.className = 'cat-abas';
@@ -236,7 +307,7 @@
       abas.querySelectorAll('button').forEach(b => b.classList.toggle('ativo', b.dataset.cat === atual));
       grade.innerHTML = '';
       for (const t of Object.values(TIPOS)) {
-        if (t.cat !== atual) continue;
+        if (t.cat !== atual || !filtro(t)) continue;
         const b = document.createElement('button');
         b.className = 'cat-item' + (t.id === marcado ? ' ativo' : ''); b.dataset.tipo = t.id;
         b.innerHTML = `<img src="${t.foto}" alt="" loading="lazy"><span>${t.nome}</span>`;
@@ -245,6 +316,7 @@
       }
     };
     for (const c of CATEGORIAS) {
+      if (!Object.values(TIPOS).some(t => t.cat === c && filtro(t))) continue;
       const b = document.createElement('button'); b.textContent = c; b.dataset.cat = c;
       b.onclick = () => { atual = c; desenhar(); };
       abas.appendChild(b);

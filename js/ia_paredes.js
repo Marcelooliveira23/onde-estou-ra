@@ -22,6 +22,7 @@ export function carregar(progresso) {
     const tentar = async (device, dtype) => {
       modelo = await T.AutoModel.from_pretrained(MODELO, { device, dtype, progress_callback: progresso });
       dispositivo = device === 'webgpu' ? 'WebGPU (placa de vídeo)' : 'WebAssembly (processador)';
+      tamanho(device === 'webgpu' ? 512 : 384);
     };
     let gpu = false;
     try { gpu = !!(navigator.gpu && await navigator.gpu.requestAdapter()); } catch (e) { gpu = false; }
@@ -34,9 +35,10 @@ export function carregar(progresso) {
 }
 export const pronto = () => !!modelo;
 
-const S = 384; // a imagem vai ao modelo em 384×384 (a saída vem em 96×96)
+let S = 384; // a imagem vai ao modelo em 384×384 (saída 96×96); com WebGPU, 512×512 (saída 128×128: mais precisa)
 const cv = document.createElement('canvas'); cv.width = cv.height = S;
 const g = cv.getContext('2d', { willReadFrequently: true });
+function tamanho(n) { S = n; cv.width = cv.height = n; }
 const MEDIA = [0.485, 0.456, 0.406], DESVIO = [0.229, 0.224, 0.225];
 // fonte: vídeo/canvas; (sx, sy, sw, sh): o recorte que aparece na tela
 export async function segmentar(fonte, sx, sy, sw, sh) {
@@ -51,7 +53,16 @@ export async function segmentar(fonte, sx, sy, sw, sh) {
     for (let k = 0; k < K; k++) { const v = L[k * M + i]; if (v > m) { m = v; c = k; } }
     mapa[i] = c;
   }
-  return { mapa, W, H, ms: performance.now() - t0 };
+  return { mapa, W, H, L, K, ms: performance.now() - t0 };
+}
+// Borda "sub-pixel": entre a última linha de parede (y) e a primeira de chão (y+1), a fronteira fica onde
+// (pontuação de parede − pontuação de chão) passa por zero. Interpolando, a medida fica ~5x mais fina.
+function fronteira(r, x, y) {
+  const { L, K, W, H } = r; if (!L) return (y + 1) / H;
+  const M = W * H, melhor = (i, conj) => { let m = -1e9; for (const k of conj) if (k < K) m = Math.max(m, L[k * M + i]); return m; };
+  const d0 = melhor(y * W + x, PAREDE) - melhor(y * W + x, CHAO), d1 = melhor((y + 1) * W + x, PAREDE) - melhor((y + 1) * W + x, CHAO);
+  const f = d0 > 0 && d1 < 0 ? d0 / (d0 - d1) : 0.5;
+  return (y + 0.5 + f) / H;
 }
 
 // Rodapés: em cada coluna da imagem, o ponto mais baixo onde há PAREDE (ou porta/janela) com CHÃO logo abaixo.
@@ -71,7 +82,7 @@ export function rodapes(r, colunas = 48) {
       let chao = 0; for (let yy = y + 1; yy < H; yy++) if (CHAO.has(mapa[yy * W + x])) chao++;
       if (chao < (H - y - 1) * 0.6) continue; // abaixo do rodapé tem que ser (quase) só chão
       let porta = 0; for (let yy = y; yy > Math.max(0, y - H * 0.25); yy--) if (mapa[yy * W + x] === C.porta) porta++;
-      out.push({ u: (x + 0.5) / W, v: (y + 1) / H, tipo: porta > H * 0.08 ? 'porta' : janela ? 'janela' : 'parede' });
+      out.push({ u: (x + 0.5) / W, v: fronteira(r, x, y), tipo: porta > H * 0.08 ? 'porta' : janela ? 'janela' : 'parede' });
       break;
     }
   }
